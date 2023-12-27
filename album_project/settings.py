@@ -85,7 +85,7 @@ WSGI_APPLICATION = "album_project.wsgi.application"
 # }
 
 
-# DATABASES = db_settings.DATABASES
+DATABASES = db_settings.DATABASES
 SECRET_KEY = db_settings.SECRET_KEY
 
 # Password validation
