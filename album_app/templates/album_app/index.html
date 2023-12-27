@@ -4,4 +4,9 @@
 
 <h1>인덱스 페이지</h1>
 
+<form action="{% url 'exhibition' %}" method="post">
+    {% csrf_token %}
+    <input type="submit" value="Visit exhibition">
+</form>
+
 {% endblock content %}
