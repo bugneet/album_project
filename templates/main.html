@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>사진 분석 웹사이트</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="logo.png" alt="로고">
+    </div>
+    <nav>
+      <ul>
+        <li><a href="#">홈페이지</a></li>
+        <li><a href="#">로그인</a></li>
+        <li><a href="#">회원가입</a></li>
+        <li><a href="#">마이페이지</a></li>
+      </ul>
+    </nav>
+    <div class="search">
+      <input type="text" placeholder="사진 검색">
+      <button type="submit">검색</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="photo-upload">
+      <h2>사진 업로드</h2>
+      <p>사진을 업로드하고 분석 결과를 확인하세요.</p>
+      <form action="/upload/" method="post">
+        <input type="file" name="photo">
+        <input type="submit" value="업로드">
+      </form>
+    </section>
+
+    <section class="analysis-results">
+      <h2>분석 결과</h2>
+      <p>분석 결과는 사진 업로드 후 확인할 수 있습니다.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>Copyright &copy; 2023 사진 분석 웹사이트</p>
+  </footer>
+</body>
+</html>
