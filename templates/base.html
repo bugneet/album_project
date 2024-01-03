@@ -1,27 +1,22 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta charset="utf-8">
-    <title>album_project</title>
-    <!-- css load -->
-    
-    <!-- js load -->
-    <script src="{% static '/js/jquery-3.7.1.min.js' %}"></script>
-    
-    
-
+  <meta charset="UTF-8">
+  <title>사진 분석 웹사이트</title>
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+  <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
 </head>
 <body>
 
-    {% include "nav.html" %}
+  {% include "header.html" %}
 
-    {% block content %}  
-    {% endblock content %}
+  <main>
+    {% block content %}
+    {% endblock %}
+  </main>
 
-    <!-- Footer Start -->
-    <div>       
-    </div>
-    <!-- Footer End -->
+  {% include "footer.html" %}
+
 </body>
 </html>

@@ -1,9 +1,13 @@
 <nav>
-    <ul>
-        <li><a href="">전체분석</a></li>
-        <li><a href="">전시관</a></li>
-        <li><a href="">마이페이지</a></li>
-        <li><a href="">로그인</a></li>  
-        <li><a href="">회원가입</a></li>      
-    </ul>
+  <ul>
+    <li><a href="/">전체분석</a></li>
+    <li><a href="/gallery/">전시관</a></li>
+    {% if user.is_authenticated %}
+      <li><a href="/my-photos/">나의 사진첩</a></li>
+      <li><a href="/logout/">로그아웃</a></li>
+    {% else %}
+      <li><a href="/login/">로그인</a></li>
+      <li><a href="/signup/">회원가입</a></li>
+    {% endif %}
+  </ul>
 </nav>
