@@ -9,18 +9,24 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+import os
 from pathlib import Path
+import db_settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# url에서 사용하는 이름
+MEDIA_URL = '/media/'
+
+# reactWorkspace 안에 upload 폴더 생성됨
+MEDIA_ROOT = os.path.join(BASE_DIR.parent, 'upload')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-k#&pt4nsw+oqr7n*x68xdpcj&ri(gj@=@&6ss4&j+8wb_$53km"
+# SECRET_KEY = "django-insecure-k#&pt4nsw+oqr7n*x68xdpcj&ri(gj@=@&6ss4&j+8wb_$53km"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -37,9 +43,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "album_app",
+    "users_app",
+    "corsheaders",  # CORS 추가
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # CORS 추가
+    "django.middleware.common.CommonMiddleware",  # CORS 추가
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -54,7 +66,8 @@ ROOT_URLCONF = "album_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        'DIRS': [BASE_DIR / 'templates'],
+        # "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -73,13 +86,16 @@ WSGI_APPLICATION = "album_project.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
 
+
+DATABASES = db_settings.DATABASES
+SECRET_KEY = db_settings.SECRET_KEY
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -117,7 +133,16 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    os.path.join(BASE_DIR, 'static')
+]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL ='users_app.User'
+
+# CORS 추가
+CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
+CORS_ALLOW_CREDENTIALS = True

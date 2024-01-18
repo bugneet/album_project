@@ -1,0 +1,109 @@
+#mypage_album_body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    min-height: 100vh;
+}
+
+#menu {
+    width: 200px;
+    background-color: #ffffff;
+    color: rgb(0, 0, 0);
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+#content {
+    flex: 1;
+    box-sizing: border-box;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+#img_content {
+    flex: 1;
+    box-sizing: border-box;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+    overflow-y: auto;
+    /* 이미지가 많아질 경우 스크롤바가 나타나도록 함 */
+}
+
+.image-container {
+    width: calc(33.33% - 20px);
+    /* 33.33% 너비의 각 이미지 컨테이너를 만듭니다. 여기서 20px은 간격입니다. */
+    margin-bottom: 20px;
+    overflow: hidden;
+    position: relative;
+}
+
+img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.checkbox-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.checkbox-container label {
+    color: #000000;
+    display: inline-block;
+}
+
+.mypost_item {
+    display: flex;
+    max-width: 800px;
+    border: 1px solid #ccc;
+    overflow: hidden;
+    /* margin-bottom: 10px; */
+}
+
+.mypost_image_container img {
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+
+}
+
+.mypost_content_container {
+    flex: 1;
+    padding: 20px;
+    box-sizing: border-box;
+
+}
+
+#post_content {
+    flex: 1;
+    box-sizing: border-box;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+
+}
+
+.classification_image_container img {
+    /* width: calc(33.33% - 20px);
+    height: auto; */
+    width: 300px;
+    height: 300px;
+
+}
+
+/* 화면 보기용 div css */
+/* div {
+    border: 1px solid #333;
+} */
