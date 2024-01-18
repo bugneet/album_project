@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div id = mypage_album_body>
+    <div id="content">        
+
+        <div id="post_content"> 
+            <p>{{ alltags }}</p>
+            {% for item in items %}
+            <div class="mypost_item">
+                <div class="classification_image_container">
+                    <img src="{% static 'img/2011-01-01/'|add:item.img_path %}" alt="이미지">                    
+                </div>
+                <div class="mypost_contents_container">
+                    <div>
+                        <p>파일명 : <input type="text" value={{ item.img_path }} style="width: 300px;"><p>
+                        <p>날짜 : <input type="text" value={{ item.date|date:"Y-m-d" }}></p>
+                        <p>태그 : <input type="text" value={{ item.tags }} style="width: 300px;"></p>
+                        <!-- <br><a href="#">수정</a> <a href="#">삭제</a>  -->
+                    </div>
+                    
+                </div>
+            </div>  
+            {% endfor %}         
+        </div>
+        
+    </div>
+
+</div>
+{% endblock content %}
