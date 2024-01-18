@@ -9,7 +9,7 @@ from .models import Photo
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = settings.BASE_DIR
 
 def upload_photo(request):
     if request.method == 'POST':

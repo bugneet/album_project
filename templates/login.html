@@ -1,31 +1,42 @@
-from django.contrib.auth import authenticate, login
+{% extends 'base.html' %}
 
-# 로그인 페이지
-def login(request):
-    if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
+{% block content %}
 
-        # 유효성 검사
-        if not username or len(username) < 2 or len(username) > 20:
-            return render(request, "accounts/login.html", {
-                "error": "사용자 이름은 2~20자여야 합니다."
-            })
+<header>
+ {% include 'header.html' %}
+</header>
 
-        if not password or len(password) < 8 or len(password) > 20:
-            return render(request, "accounts/login.html", {
-                "error": "비밀번호는 8~20자여야 합니다."
-            })
+<main>
+ {% block main %}
 
-        # 로그인
-        user = authenticate(username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect("home")
-        else:
-            return render(request, "accounts/login.html", {
-                "error": "사용자 이름 또는 비밀번호가 올바르지 않습니다."
-            })
+    <section class="login">
+      <h2>로그인</h2>
 
-    else:
-        return render(request, "accounts/login.html")
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+
+      <form action="/login/" method="post">
+
+        <div class="form-group">
+          <label for="username">사용자 이름</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="사용자 이름">
+        </div>
+
+        <div class="form-group">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="비밀번호">
+        </div>
+
+        <button type="submit" class="btn btn-primary">로그인</button>
+
+      </form>
+
+    </section>
+
+  {% endblock %}
+</main>
+
+<footer>
+  {% include 'footer.html' %}
+</footer>
