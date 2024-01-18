@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div id = mypage_album_body>
+    <div id="menu">
+        <h2>마이페이지</h2>
+        <ul>
+            <li><a href="{% url 'mypage_album' %}">앨범보기</a></li>
+            <li><a href="#">분석결과</a></li>
+            <li><a href="{% url 'mypage_mypost' %}">내게시글</a></li>
+            <li><a href="{% url 'mypage_myreply' %}">내댓글</a></li>
+            <li><a href="#">좋아요(사진)</a></li>
+            <!-- 원하는 만큼 메뉴 항목을 추가하세요 -->
+          </ul>
+    </div>
+
+    <div id="content">        
+
+        <div id="post_content"> <!-- 구현시 게시글 수 만큼 반복-->
+            <div class="mypost_item">
+               제목:안녕하세요 에 대한 댓글입니다 <br>
+               ㄴ 네 안녕하세요~ <a href="#">수정</a> <a href="#">삭제</a> 
+            </div>
+            <div class="mypost_item">
+                제목:안녕하세요 에 대한 댓글입니다 <br>
+                ㄴ 네 안녕하세요~ <a href="#">수정</a> <a href="#">삭제</a> 
+             </div>
+             <div class="mypost_item">
+                제목:안녕하세요 에 대한 댓글입니다 <br>
+                ㄴ 네 안녕하세요~ <a href="#">수정</a> <a href="#">삭제</a> 
+             </div>
+             <div class="mypost_item">
+                제목:안녕하세요 에 대한 댓글입니다 <br>
+                ㄴ 네 안녕하세요~ <a href="#">수정 </a> <a href="#"> 삭제</a> 
+             </div>
+             <div class="mypost_item">
+                제목:안녕하세요 에 대한 댓글입니다 <br>
+                ㄴ 네 안녕하세요~ <a href="#">수정</a> <a href="#">삭제</a> 
+             </div>
+            
+            <div>
+                1/2/3/4/5/6 페이지
+            </div>      
+        </div>
+        
+    </div>
+
+</div>
+{% endblock content %}
