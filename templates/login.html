@@ -1,13 +1,31 @@
-{% extends 'base.html' %}
+from django.contrib.auth import authenticate, login
 
-{% block content %}
-  <h2>로그인</h2>
-  <form method="post" action="{% url 'login' %}">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <div class="login-buttons">
-      <button type="submit">로그인</button>
-      <a href="{% url 'signup' %}">회원가입</a>
-    </div>
-  </form>
-{% endblock %}
+# 로그인 페이지
+def login(request):
+    if request.method == "POST":
+        username = request.POST["username"]
+        password = request.POST["password"]
+
+        # 유효성 검사
+        if not username or len(username) < 2 or len(username) > 20:
+            return render(request, "accounts/login.html", {
+                "error": "사용자 이름은 2~20자여야 합니다."
+            })
+
+        if not password or len(password) < 8 or len(password) > 20:
+            return render(request, "accounts/login.html", {
+                "error": "비밀번호는 8~20자여야 합니다."
+            })
+
+        # 로그인
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect("home")
+        else:
+            return render(request, "accounts/login.html", {
+                "error": "사용자 이름 또는 비밀번호가 올바르지 않습니다."
+            })
+
+    else:
+        return render(request, "accounts/login.html")

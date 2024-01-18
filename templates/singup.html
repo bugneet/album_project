@@ -1,13 +1,41 @@
-{% extends 'base.html' %}
+from django.contrib.auth.models import User
 
-{% block content %}
-  <h2>회원가입</h2>
-  <form method="post" action="{% url 'signup' %}">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <div class="signup-buttons">
-      <button type="submit">가입하기</button>
-      <a href="{% url 'login' %}">로그인</a>
-    </div>
-  </form>
-{% endblock %}
+# 회원 가입 페이지
+def register(request):
+    if request.method == "POST":
+        username = request.POST["username"]
+        email = request.POST["email"]
+        password = request.POST["password"]
+        password2 = request.POST["password2"]
+
+        # 유효성 검사
+        if not username or len(username) < 2 or len(username) > 20:
+            return render(request, "accounts/register.html", {
+                "error": "사용자 이름은 2~20자여야 합니다."
+            })
+
+        if not email or not email.endswith("@example.com"):
+            return render(request, "accounts/register.html", {
+                "error": "이메일 주소는 형식에 맞게 입력해야 합니다."
+            })
+
+        if not password or len(password) < 8 or len(password) > 20:
+            return render(request, "accounts/register.html", {
+                "error": "비밀번호는 8~20자여야 합니다."
+            })
+
+        if password != password2:
+            return render(request, "accounts/register.html", {
+                "error": "비밀번호와 비밀번호 확인이 일치하지 않습니다."
+            })
+
+        # 회원 가입
+        user = User.objects.create_user(username, email, password)
+        user.save()
+
+        # 로그인 처리
+        login(request, user)
+        return redirect("home")
+
+    else:
+        return render(request, "accounts/register.html")

@@ -134,4 +134,5 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL ='users_app.User'
 
-MEDIA_ROOT = 'C:/Users/hst/Desktop/photos'
+MEDIA_ROOT = BASE_DIR/ 'Upload'
+

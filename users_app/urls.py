@@ -5,7 +5,7 @@ from .views import upload_photo
 
 
 urlpatterns=[
-    path('analysis-results/', analysis_results_view, name='analysis-results'),
+    path('analysis-results/', views.analysis_results_view, name='analysis-results'),
     path('upload/', upload_photo, name='upload-photo'),
     path('signup/', views.signup, name='signup'),
     path('login/', views.login, name='login'),

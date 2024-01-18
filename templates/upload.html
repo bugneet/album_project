@@ -18,38 +18,13 @@
         <div class="input-group">
           <input type="file" name="photo" class="form-control" accept="image/jpeg,image/png">
           <button type="submit" class="btn btn-primary">업로드</button>
-        </div>
-
-        <div class="form-group">
-          <label for="title">사진 제목</label>
-          <input type="text" id="title" name="title" class="form-control" placeholder="사진 제목">
-        </div>
-
-        <div class="form-group">
-          <label for="description">사진 설명</label>
-          <input type="text" id="description" name="description" class="form-control" placeholder="사진 설명">
+          <button type="button" class="btn btn-primary">분류하기</button>
         </div>
 
       </form>
 
     </section>
 
-    <section class="analysis-results">
-      <h2>분석 결과</h2>
-      <p>사진 업로드 후 확인할 수 있는 분석 결과입니다.</p>
-      <ul>
-        {% for photo in photos %}
-          <li>
-            <img src="{{ photo.image.url }}" alt="{{ photo.title }}" style="width: 200px;">
-            <div class="photo-info">
-              <h4>{{ photo.analysis_result.title }}</h4>
-              <p>{{ photo.analysis_result.description }}</p>
-              <a href="{% url 'delete-photo' photo.id %}">삭제</a>
-            </div>
-          </li>
-        {% endfor %}
-      </ul>
-    </section>
   {% endblock %}
 </main>
 
