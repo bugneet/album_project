@@ -232,7 +232,7 @@ def calculate_image_hash(file_path):
 
 
 
-    BASE_DIR = settings.BASE_DIR
+BASE_DIR = settings.BASE_DIR
 
 def upload_photo(request):
     if request.method == 'POST':

@@ -178,3 +178,11 @@ class UsersAppUserUserPermissions(models.Model):
         managed = False
         db_table = 'users_app_user_user_permissions'
         unique_together = (('user', 'permission'),)
+
+class Photo(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    image = models.ImageField(upload_to='photos/') 
+
+    def __str__(self):
+        return self.title
