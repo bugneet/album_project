@@ -12,9 +12,9 @@ from rest_framework.validators import UniqueValidator
 # 회원가입 시리얼라이저
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
-        help_text="이메일(Unique)",
+        help_text="아이디(Unique)",
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all())],
+        validators=[UniqueValidator(queryset=User.objects.all(), message="이미 존재하는 아이디입니다.")],
     )
     password = serializers.CharField(
         help_text="비밀번호",
@@ -27,6 +27,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+        # fields = ('username', 'password', 'password2', 'email', 'user_name', 'user_phone','user_address')
         fields = ('username', 'password', 'password2', 'email', 'user_name','user_address')
 
     def validate(self, data):
@@ -41,6 +42,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             username = validated_data['username'],
             email = validated_data['email'],
             user_name = validated_data['user_name'],
+           # user_phone = validated_data['user_phone'],
             user_address = validated_data['user_address'],
         )
 

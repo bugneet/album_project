@@ -266,7 +266,7 @@ def upload_photo(request):
 
         return redirect('classfication.html')
 
-    return render(request, 'upload.html')
+    return render(request, 'upload.html')    
 
 
 def analysis_results_view(request):
