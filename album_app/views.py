@@ -264,7 +264,7 @@ def upload_photo(request):
         except ValidationError as e:
             return HttpResponseBadRequest(e.messages)
 
-        return redirect('analysis_results_view')
+        return redirect('classfication.html')
 
     return render(request, 'upload.html')
 

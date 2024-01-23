@@ -1,15 +1,29 @@
-import datetime
-import os
-from django.conf import settings
-from django.shortcuts import render, redirect
+from django.shortcuts import render
+from .models import User
+from rest_framework import generics, status
+from .serializers import RegisterSerializer, LoginSerializer
+from rest_framework.response import Response
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from datetime import datetime
+from .models import PhotoTable, Board, Reply, Photo
+import os
 from django.core.exceptions import ValidationError
-from .models import Photo
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.contrib.auth import login as auth_login
+from django.shortcuts import render, redirect
 
-BASE_DIR = settings.BASE_DIR
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegisterSerializer
+
+# 시리얼라이저를 통과하여 받아온 토큰 반환
+class LoginView(generics.GenericAPIView):
+    print("views 로그인")
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data
+        return Response({"token": token.key}, status=status.HTTP_200_OK)
 
 def upload_photo(request):
     if request.method == 'POST':
@@ -41,33 +55,9 @@ def upload_photo(request):
         except ValidationError as e:
             return HttpResponseBadRequest(e.messages)
 
-        return redirect('analysis_results_view')
+        return redirect('classfication.html')
 
-    return render(request, 'upload.html')
-
+    return render(request, 'upload.html')        
 
 def analysis_results_view(request):
-    return render(request, 'analysis_results.html')
-
-
-def signup(request):
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            auth_login(request, user)  
-            return redirect('index.html')  
-    else:
-        form = UserCreationForm()
-    return render(request, 'signup.html', {'form': form})
-
-def login(request):
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            auth_login(request, user)
-            return redirect('index.html')  
-    else:
-        form = AuthenticationForm()
-    return render(request, 'login.html', {'form': form})
+    return render(request, 'classfication.html')    
