@@ -16,10 +16,8 @@ import db_settings
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# url에서 사용하는 이름
 MEDIA_URL = '/media/'
 
-# reactWorkspace 안에 upload 폴더 생성됨
 MEDIA_ROOT = os.path.join(BASE_DIR.parent, 'upload')
 
 # Quick-start development settings - unsuitable for production
@@ -46,13 +44,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "album_app",
     "users_app",
-    "corsheaders",  # CORS 추가
-    'rest_framework.authtoken',
+    'rest_framework',
+    'django_seed',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # CORS 추가
-    "django.middleware.common.CommonMiddleware",  # CORS 추가
+    'corsheaders.middleware.CorsMiddleware', # CORS 추가
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -68,7 +66,6 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         'DIRS': [BASE_DIR / 'templates'],
-        # "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -148,9 +145,10 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL ='users_app.User'
 
+LOGIN_REDIRECT_URL = '/'
+
 # CORS 추가
 CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
-
 
 MEDIA_ROOT = BASE_DIR/ 'Upload'

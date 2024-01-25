@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<h1>사진편집페이지</h1>
+
+<form method="post" action="{% url 'photo_edit' %}">
+    {% csrf_token}
+    <label for="text">텍스트 입력: </label>
+    <input type="text" id="text" name="text" required>
+    <button type="submit">편집</button>
+</form>
+
+{% if edited_image %}
+    <h2>편집된 이미지</h2>
+    <img src="{{edited_image}}" alt="편집 이미지">
+{% endif %}
+
+{% endblock content %}

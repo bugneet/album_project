@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             "user_address",  
             "last_login",
             "date_joined",          
-        ]
+        ]        
 
 class PhotoTableSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,6 +33,8 @@ class PhotoTableSerializer(serializers.ModelSerializer):
 class BoardSerializer(serializers.ModelSerializer):
     photoid = PhotoTableSerializer()
     id = UserSerializer()
+    photoid_image = serializers.CharField(source='photoid.image', read_only=True)
+    photoid_phototag = serializers.CharField(source='photoid.phototag', read_only=True)
 
     class Meta:
         model = Board
@@ -44,14 +46,13 @@ class BoardSerializer(serializers.ModelSerializer):
             "created_time",
             "photoid",     
             "board_photo_tag",      
+            'photoid_image', 
+            'photoid_phototag',
         ]
 
 
-
-
 class ReplySerializer(serializers.ModelSerializer):
-    board_no = BoardSerializer()
-    
+    board_no = BoardSerializer()    
     
     class Meta:
         model = Reply
@@ -75,3 +76,4 @@ class LikedSerializer(serializers.ModelSerializer):
             "id",
             "likedate",          
         ]
+        

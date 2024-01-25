@@ -1,8 +1,6 @@
 from django.urls import path
 from . import views
-from .views import PhotoTableAPIMixins, BoardAPIMixins, ReplyAPIMixins,LikedAPIMixins, TagSearch, MyPost, MyReply, MyReplyDel, MyLiked, MyLikedDel
-
-from .views import upload_photo
+from .views import *
 urlpatterns = [
     path('', views.index, name='index'),
     path('mypage_album/', views.mypage_album, name='mypage_album'),
@@ -21,5 +19,14 @@ urlpatterns = [
     path("mixin/liked/", LikedAPIMixins.as_view()),
     
     path('upload/', upload_photo, name='upload-photo'),
-
+    path( '', views.index, name='index'),
+    # path('exhibition/', views.exhibition, name='exhibition'),
+    path('exhibition/', ExhibitionAPI.as_view()),
+    path('current_user/', CurrentUserView.as_view()),
+    path('board_writing/', BoardWritingView.as_view()),
+    path('photos/<int:user_id>/', PhotoListView.as_view()),
+    path('boards/', BoardAPIMixins.as_view()),
+    path('board/<str:board_no>/', BoardAPIMixins.as_view())
+    
 ]
+

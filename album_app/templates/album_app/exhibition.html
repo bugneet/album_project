@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<h1>전시관</h1>
+<a href="{% url 'board_writing' %}"><button>글쓰기</button></a>
+
+<form method="get" action="{% url 'exhibition' %}">
+    {% for tag_info in all_phototags %}
+        <input type="checkbox" name="phototag" value="{{ tag_info.photoid__phototag }}"
+        {% if tag_info.photoid__phototag == selected_phototag %}checked{% endif %}>
+        {{ tag_info.photoid__phototag }} ({{ tag_info.count }})
+    {% endfor %}
+    <button type="submit">분류</button>
+</form>
+
+{% for board in boards %}
+    <div>
+        <img src="{{ board.photoid.image }}" alt="Board Image">
+        <h2>{{ board.title }}</h2>
+        <p>{{ board.created_time }}</p>
+        <p>{{ board.contents }}</p>
+    </div>
+{% endfor %}
+<div class="pagination">
+    <span class="step-links">
+        {% if boards.has_previous %}
+            <a href="?page=1">처음</a>
+            <a href="?page={{ boards.previous_page_number }}">이전</a>
+        {% endif %}
+        
+        {% for i in boards.paginator.page_range %}
+        {% if i >= boards.number|add:"-3" and i <= boards.number|add:"3" %}
+            {% if boards.number == i %}
+                <span class="current-page">
+                {{ i }} / {{ boards.paginator.num_pages }}
+                </span>
+            {% else %}
+            <a href="?page={{ i }}">{{ i }}</a>
+            {% endif %}
+        {% endif %}
+        {% endfor %}
+        
+        
+        {% if boards.has_next %}
+            <a href="?page={{ boards.next_page_number }}">다음</a>
+            <a href="?page={{ boards.paginator.num_pages }}">마지막</a>
+        {% endif %}
+    </span>
+</div>
+{% endblock content %}
