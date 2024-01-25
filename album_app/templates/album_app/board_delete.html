@@ -1,0 +1,8 @@
+{% block content %}
+<p>{{ board.title }}을 정말 삭제하시겟습니까?""?</p>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">확인</button>
+  <a href="{% url 'board_detail' %}">취소</a>
+</form>
+{% endblock %}

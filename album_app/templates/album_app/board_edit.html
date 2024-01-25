@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <h1>게시물 편집</h1>
+  <form method="post" action="{% url 'board_edit' board_no=board.board_no %}">
+    {% csrf_token %}
+    <label for="title">제목:</label>
+    <input type="text" id="title" name="title" value="{{ board.title }}" required>
+    
+    <label for="contents">내용:</label>
+    <textarea id="contents" name="contents" required>{{ board.contents }}</textarea>
+    
+    <button type="submit">변경</button>
+  </form>
+  <a href="{% url 'board_detail' board_no=board.board_no %}">취소</a>
+{% endblock %}

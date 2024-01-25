@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<h1>글쓰기</h1>
+<div id="choose_photo">
+    {% if selected_photo %}
+        <div>
+            <img src="{{ selected_photo.image }}" alt="사진을 선택해 주세요.">
+        </div>
+    {% endif %}
+    <div>
+        <a href="{% url 'photo_choose' %}">사진 찾기</a>
+    </div>
+<div>
+    <form method="post" action="{% url 'board_writing' %}">
+        {% csrf_token %}
+        <input type="hidden" name="selected_photo_id" value="{{ selected_photo.id }}">
+        
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" required>
+        
+        <label for="tag">태그:</label>
+        <input type="text" id="tag" name="tag" required>
+        
+        <label for="contents">내용:</label>
+        <input type="text" id="contents" name="contents" required>
+        
+        <button type="submit">글 등록</button>
+    </form>
+</div>
+
+</div>
+
+{% endblock content %}

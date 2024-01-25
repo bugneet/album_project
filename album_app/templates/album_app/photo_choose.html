@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<h1>사진선택페이지</h1>
+<form method="post" action="{% url 'photo_choose' %}">
+    {% csrf_token %}
+    <ul>
+        {% for photo in photos %}
+            <li>
+                <img src="{{ photo.image }}" alt="Photo">
+                <button type="submit" name="selected_photo_id" value="{{ photo.photoid }}">선택</button>
+            </li>
+        {% endfor %}
+    </ul>
+</form>
+
+{% if selected_photo %}
+    <div>
+        <p>선택한 사진:</p>
+        <img src="{{ selected_photo.image }}" alt="Selected Photo">
+        <form method="post" action="{% url 'board-writing' %}">
+            {% csrf_token %}
+            <input type="hidden" name="selected_photo_id" value="{{ selected_photo.id }}">
+            <input type="submit" value="선택한 사진 사용">
+        </form>
+    </div>
+{% endif %}
+
+{% endblock content %}

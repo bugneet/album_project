@@ -16,6 +16,9 @@ import db_settings
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR.parent, 'upload')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -39,10 +42,14 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "album_app",
-    "users_app"
+    "users_app",
+    'rest_framework',
+    'django_seed',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # CORS 추가
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -58,7 +65,6 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         'DIRS': [BASE_DIR / 'templates'],
-        # "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -134,3 +140,8 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL ='users_app.User'
 
+LOGIN_REDIRECT_URL = '/'
+
+# CORS 추가
+CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
+CORS_ALLOW_CREDENTIALS = True
