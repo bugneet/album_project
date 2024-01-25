@@ -16,8 +16,7 @@ urlpatterns = [
     path("myreplydel/<str:rno>/", MyReplyDel.as_view()),
     path("myliked/", MyLiked.as_view()),
     path("myreplydel/<str:likeno>/", MyLikedDel.as_view()),
-    path("mixin/liked/", LikedAPIMixins.as_view()),
-    
+    path("mixin/liked/", LikedAPIMixins.as_view()),    
     path('upload/', upload_photo, name='upload-photo'),
     path( '', views.index, name='index'),
     # path('exhibition/', views.exhibition, name='exhibition'),
@@ -26,7 +25,8 @@ urlpatterns = [
     path('board_writing/', BoardWritingView.as_view()),
     path('photos/<int:user_id>/', PhotoListView.as_view()),
     path('boards/', BoardAPIMixins.as_view()),
-    path('board/<str:board_no>/', BoardAPIMixins.as_view())
-    
+    path('board/<str:board_no>/', BoardAPIMixins.as_view()),    
+    path('chart_db/', tag_chart),
+    path('chart_db_personal',tag_chart_personal)
 ]
 

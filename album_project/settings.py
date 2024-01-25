@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     "album_app",
     "users_app",
     'django_seed',
-    'corsheaders',
+    "corsheaders",  # CORS 추가
 ]
 
 MIDDLEWARE = [
@@ -150,5 +150,3 @@ LOGIN_REDIRECT_URL = '/'
 # CORS 추가
 CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
-
-
