@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
-from .views import PhotoTableAPIMixins, BoardAPIMixins, ReplyAPIMixins, TagSearch, MyBoard, MyReply
+from .views import PhotoTableAPIMixins, BoardAPIMixins, ReplyAPIMixins, TagSearch, MyBoard, MyReply, tag_chart, tag_chart_personal
+
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -14,5 +15,6 @@ urlpatterns = [
     path("myboard/", MyBoard.as_view()),
     path("myreply/", MyReply.as_view()),
     path('classification/', views.classification, name='classification'),
-
+    path('chart_db/', tag_chart),
+    path('chart_db_personal',tag_chart_personal)
 ]

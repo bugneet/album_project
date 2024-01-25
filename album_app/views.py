@@ -1,5 +1,5 @@
 import re
-from django.shortcuts import render
+from django.shortcuts import render , HttpResponseRedirect
 from rest_framework import status, mixins, generics
 from .models import PhotoTable, Board, Reply
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer
@@ -11,6 +11,11 @@ from ultralytics import YOLO
 import torchvision.transforms as transforms
 from operator import itemgetter
 import imagehash
+from rest_framework.decorators import api_view   
+from rest_framework.response import Response
+from django.contrib import messages
+
+
 # Create your views here.
 def index(request):
     return render(request, 'album_app/index.html')
@@ -159,6 +164,95 @@ class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generi
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
     
+@api_view(['GET'])
+def tagChart_test(request):
+    id= request.user.id # 로그인한 id 불러오기 
+    
+    name_list = ['프로그래밍', '안드로이드']
+    data_dict = {}
+    data_list = []    
+    
+
+    for i, name in enumerate(name_list):
+        count = len(PhotoTable.objects.filter(phototag__contains=name, userid=id)) # 특정 id에 해당
+        data_dict['tagname'] = name_list[i]
+        data_dict['tagcount'] = count        
+        data_list.append(data_dict)
+        data_dict = {}    
+
+    print(data_list)
+    return Response(data_list)
+
+
+@api_view(['GET'])
+def tag_chart(request):
+    lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '아기', '백팩', '풍선', '바벨', 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', '덤벨', 
+            '귀걸이', '에펠탑', '운동기구', '안경', '말', '아이', '등대', '바베큐고기', 
+            '포장고기', '목걸이', '바지', '휴대폰뒷면', '턱걸이', '리프트(케이블카)', 
+            '반지', '러닝머신', '신발', '쇼핑백', '소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+    tag_count=[]
+
+    for x in lis:
+        count= len(PhotoTable.objects.filter(phototag__contains=x))
+        tag_count.append(count)
+    # tag_count= sorted(tag_count, reverse=True)[:10]
+    result=[]
+    for y in range(len(lis)):
+        result.append({"tagname":lis[y], "tagcount":tag_count[y]})
+    
+    result_top10 = sorted(result, key=lambda x: x['tagcount'], reverse=True)[:10]
+
+    return Response(result_top10)
+
+
+@api_view(['GET'])
+def tag_chart_personal(request):
+
+    if request.user.is_authenticated:
+
+        id= request.user.id # 로그인한 id 불러오기 
+
+    # p_count = len(PhotoTable.objects.filter(phototag__contains='프로그래밍', bookno='1003'))
+        p_count = len(PhotoTable.objects.filter(phototag__contains='사람' ,userid=id))
+        print(p_count)
+
+        a_count = len(PhotoTable.objects.filter(phototag__contains='일상' ,userid=id))
+        print(a_count)       
+
+        b_count = len(PhotoTable.objects.filter(phototag__contains='아기' ,userid=id))
+        print(b_count) 
+
+        c_count = len(PhotoTable.objects.filter(phototag__contains='운동기구', userid=id))
+        print(c_count) 
+        d_count = len(PhotoTable.objects.filter(phototag__contains='비행기' , userid=id))
+        print(d_count) 
+
+        result = [
+            {"tagname":'사람', "tagcount":p_count},
+            {"tagname":'일상', "tagcount":a_count},
+            {"tagname":'운동기구', "tagcount":b_count},
+            {"tagname":'아기', "tagcount":c_count},
+            {"tagname":'비행기', "tagcount":d_count},
+
+            ]  
+
+
+        return Response(result)
+    else:
+        messages.warning(request, '로그인이 필요합니다.')
+        return HttpResponseRedirect('http://127.0.0.1:8000/chart_db/')
+
+
 class BoardAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
     # 2개 변수 필요
