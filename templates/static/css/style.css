@@ -1,0 +1,32 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  header, main, footer {
+    margin: 20px;
+  }
+  
+  .signup-buttons, .login-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  
+  .signup-buttons button, .login-buttons button {
+    width: 45%;
+  }
+  
+  .signup-buttons a, .login-buttons a {
+    width: 45%;
+    text-align: center;
+    display: inline-block;
+    text-decoration: none;
+    padding: 8px;
+    color: #fff;
+    background-color: #4CAF50;
+    border: 1px solid #4CAF50;
+    border-radius: 4px;
+  }

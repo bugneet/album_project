@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>album_project</title>
+    <!-- css load -->
+    <link rel="stylesheet" href="{% static 'css/mypage.css' %}">
+    <!-- js load -->
+    <script src="{% static '/js/jquery-3.7.1.min.js' %}"></script>
+    
+    
+
+</head>
+<body>
+
+  {% include "header.html" %}
+
+  <main>
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  {% include "footer.html" %}
+
+</body>
+</html>
