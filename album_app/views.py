@@ -260,7 +260,6 @@ def tag_chart_personal(request):
 
             ]  
 
-
         return Response(result)
     else:
         messages.warning(request, '로그인이 필요합니다.')
@@ -271,13 +270,7 @@ class BoardAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Ge
 
     # 2개 변수 필요
     queryset = Board.objects.all()
-class ExhibitionAPI(
-    mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView
-):
-    serializer_class = BoardSerializer
 
-    def get_queryset(self):
-        return Board.objects.order_by('-created_time')
 
 # 내 (userid) 게시글 보기  
 class MyPost(generics.ListAPIView):
@@ -352,9 +345,6 @@ def calculate_image_hash(file_path):
         hash_value = imagehash.average_hash(img)
     return hash_value
 
-
-
-
 BASE_DIR = settings.BASE_DIR
 
 def upload_photo(request):
@@ -377,6 +367,25 @@ def upload_photo(request):
 
         with photo.open('wb') as f:
             f.write(photo.read())
+      
+class TagSearch(generics.ListAPIView):
+    serializer_class = PhotoTableSerializer
+
+    def get_queryset(self):
+        return PhotoTable.objects.filter(phototag__contains=self.kwargs["keyword"]) # 와일드 검색
+   
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+
+class ExhibitionAPI(
+    mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView
+):
+    serializer_class = BoardSerializer
+
+    def get_queryset(self):
+        return Board.objects.order_by('-created_time')
+
     def get_paginated_boards(self, queryset, page, board_per_page):
         paginator = Paginator(queryset, board_per_page)
 
@@ -555,38 +564,3 @@ class BoardAPIMixins(
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
-    
-    
-class TagSearch(generics.ListAPIView):
-    serializer_class = PhotoTableSerializer
-
-    def get_queryset(self):
-        return PhotoTable.objects.filter(phototag__contains=self.kwargs["keyword"]) # 와일드 검색
-   
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
-
-
-# def board_detail(request, board_no):
-#     board = get_object_or_404(Board, board_no=board_no)
-#     comments = Reply.objects.filter(board_no=board)
-#     likes = Liked.objects.filter(board_no=board)
-
-#     context = {
-#         'board' : board,
-#         'comments' : comments,
-#         'likes' : likes
-#     }
-#     return render(request, 'album_app/board_detail.html', context)
-
-# @login_required
-# def board_like(request, board_no):
-#     board = get_object_or_404(Board, board_no=board_no)
-#     user = request.user
-
-#     if Liked.objects.filter(board_no=board, id=user).exists():
-#         Liked.objects.filter(board_no=board, id=user).delete()
-#     else:
-#         Liked.objects.create(board_no=board, id=user)
-
-#     return redirect('board_detail', board_no=board_no)
