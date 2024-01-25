@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import PhotoTableAPIMixins, BoardAPIMixins, ReplyAPIMixins, TagSearch, MyBoard, MyReply
-
+from .views import upload_photo
 urlpatterns = [
     path('', views.index, name='index'),
     path('mypage_album/', views.mypage_album, name='mypage_album'),
@@ -14,5 +14,6 @@ urlpatterns = [
     path("myboard/", MyBoard.as_view()),
     path("myreply/", MyReply.as_view()),
     path('classification/', views.classification, name='classification'),
+    path('upload/', upload_photo, name='upload-photo'),
 
 ]

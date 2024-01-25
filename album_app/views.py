@@ -241,7 +241,7 @@ def upload_photo(request):
 
         title = request.POST['title']
         description = request.POST['description']
-        photo = request.FILES['photo']
+        photo = request.FILES['imgFile']  
 
         if photo.content_type not in ['image/jpeg', 'image/png']:
             return HttpResponseBadRequest('허용된 파일 형식이 아닙니다.')
@@ -250,7 +250,7 @@ def upload_photo(request):
             return HttpResponseBadRequest('허용된 파일 확장자가 아닙니다.')
 
         photo_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        photo_path = os.path.join('Upload', f'{photo_name}.jpg')  
+        photo_path = os.path.join('uploads', f'{photo_name}.jpg')  
 
         with open(photo_path, 'wb') as f:
             f.write(photo.read())
@@ -259,38 +259,15 @@ def upload_photo(request):
             photo = Photo.objects.create(
                 title=title,
                 description=description,
-                image=photo_path,
+                image=photo_path.replace(os.path.sep, '/'),  
             )
         except ValidationError as e:
             return HttpResponseBadRequest(e.messages)
 
-        return redirect('classfication.html')
-
-    return render(request, 'upload.html')    
+        return redirect('classification.html') 
+    return render(request, 'upload.html')
 
 
 def analysis_results_view(request):
     return render(request, 'classfication.html')
 
-
-def signup(request):
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            auth_login(request, user)  
-            return redirect('index.html')  
-    else:
-        form = UserCreationForm()
-    return render(request, 'signup.html', {'form': form})
-
-def login(request):
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            auth_login(request, user)
-            return redirect('index.html')  
-    else:
-        form = AuthenticationForm()
-    return render(request, 'login.html', {'form': form})
