@@ -1,16 +1,22 @@
 import re
-from django.shortcuts import render
 from rest_framework import status, mixins, generics
-from .models import PhotoTable, Board, Reply, Liked
+from .models import PhotoTable, Board, Reply, Liked, Photo
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
 import os
-import torch
+from django.conf import settings
+from django.shortcuts import render, redirect
+from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.exceptions import ValidationError
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import login as auth_login
 from PIL import Image
 from datetime import datetime
 from ultralytics import YOLO
 import torchvision.transforms as transforms
 from operator import itemgetter
 import imagehash
+
 # Create your views here.
 def index(request):
     return render(request, 'album_app/index.html')
@@ -267,3 +273,47 @@ def calculate_image_hash(file_path):
     with Image.open(file_path) as img:
         hash_value = imagehash.average_hash(img)
     return hash_value
+
+
+
+
+BASE_DIR = settings.BASE_DIR
+
+def upload_photo(request):
+    if request.method == 'POST':
+        if not request.POST.get('csrfmiddlewaretoken'):
+            return HttpResponseForbidden('CSRF 토큰이 누락되었거나 잘못되었습니다.')
+
+        title = request.POST['title']
+        description = request.POST['description']
+        photo = request.FILES['imgFile']
+
+        if photo.content_type not in ['image/jpeg', 'image/png']:
+            return HttpResponseBadRequest('허용된 파일 형식이 아닙니다.')
+
+        if not photo.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+            return HttpResponseBadRequest('허용된 파일 확장자가 아닙니다.')
+
+        photo_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        photo_path = os.path.join('Uploads', f'{photo_name}.jpg')
+
+        with photo.open('wb') as f:
+            f.write(photo.read())
+
+        try:
+            photo = Photo.objects.create(
+                title=title,
+                description=description,
+                image=photo_path.replace(os.path.sep, '/'),
+            )
+        except ValidationError as e:
+            return HttpResponseBadRequest(', '.join(e.messages))
+
+        return redirect('classification.html')
+
+    return render(request, 'upload.html')
+
+
+def analysis_results_view(request):
+    return render(request, 'classfication.html')
+

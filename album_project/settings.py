@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "album_app",
     "users_app",
     "corsheaders",  # CORS 추가
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -115,7 +116,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -146,3 +151,6 @@ AUTH_USER_MODEL ='users_app.User'
 # CORS 추가
 CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
+
+
+MEDIA_ROOT = BASE_DIR/ 'Upload'

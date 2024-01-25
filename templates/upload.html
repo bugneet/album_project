@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<header>
+ {% include 'header.html' %}
+</header>
+
+<main>
+ {% block main %}
+
+    <section class="photo-upload">
+      <h2>나의 사진 업로드</h2>
+      <p>사진을 업로드하고 분석 결과를 확인하세요.</p>
+
+      <form action="/upload/" method="post" enctype="multipart/form-data">
+
+        <div class="input-group">
+          <input type="file" name="photo" class="form-control" accept="image/jpeg,image/png">
+          <button type="submit" class="btn btn-primary">업로드</button>
+          <button type="button" class="btn btn-primary">분류하기</button>
+        </div>
+
+      </form>
+
+    </section>
+
+  {% endblock %}
+</main>
+
+<footer>
+  {% include 'footer.html' %}
+</footer>

@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="utf-8">
     <title>album_project</title>
@@ -14,14 +14,14 @@
 </head>
 <body>
 
-    {% include "nav.html" %}
+  {% include "header.html" %}
 
-    {% block content %}  
-    {% endblock content %}
+  <main>
+    {% block content %}
+    {% endblock %}
+  </main>
 
-    <!-- Footer Start -->
-    <div>       
-    </div>
-    <!-- Footer End -->
+  {% include "footer.html" %}
+
 </body>
 </html>

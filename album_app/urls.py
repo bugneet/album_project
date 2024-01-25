@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from .views import PhotoTableAPIMixins, BoardAPIMixins, ReplyAPIMixins,LikedAPIMixins, TagSearch, MyPost, MyReply, MyReplyDel, MyLiked, MyLikedDel
 
+from .views import upload_photo
 urlpatterns = [
     path('', views.index, name='index'),
     path('mypage_album/', views.mypage_album, name='mypage_album'),
@@ -19,5 +20,6 @@ urlpatterns = [
     path("myreplydel/<str:likeno>/", MyLikedDel.as_view()),
     path("mixin/liked/", LikedAPIMixins.as_view()),
     
+    path('upload/', upload_photo, name='upload-photo'),
 
 ]
