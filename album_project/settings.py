@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "album_app",
     "users_app",
-    'rest_framework',
     'django_seed',
     'corsheaders'
 ]
