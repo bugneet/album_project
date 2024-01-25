@@ -8,7 +8,7 @@ urlpatterns = [
     path('mypage_myreply/', views.mypage_myreply, name='mypage_myreply'),
     path("mixin/mypage_album/", PhotoTableAPIMixins.as_view()),
     path("mixin/board/", BoardAPIMixins.as_view()),
-    path("mixin/reply/", ReplyAPIMixins.as_view()),
+    # path("mixin/reply/", ReplyAPIMixins.as_view()),
     path("mypage_album/tag_search/<str:keyword>", TagSearch.as_view()),
     path("mypost/", MyPost.as_view()),
     path("myreply/", MyReply.as_view()),

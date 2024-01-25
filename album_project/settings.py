@@ -42,11 +42,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    'rest_framework.authtoken',
     "album_app",
     "users_app",
-    'rest_framework',
     'django_seed',
-    'corsheaders'
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -151,4 +151,4 @@ LOGIN_REDIRECT_URL = '/'
 CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
 
-MEDIA_ROOT = BASE_DIR/ 'Upload'
+

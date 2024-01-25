@@ -468,6 +468,16 @@ class BoardAPIMixins(
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+    
+    
+class TagSearch(generics.ListAPIView):
+    serializer_class = PhotoTableSerializer
+
+    def get_queryset(self):
+        return PhotoTable.objects.filter(phototag__contains=self.kwargs["keyword"]) # 와일드 검색
+   
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
 
 # def board_detail(request, board_no):
