@@ -6,4 +6,7 @@ class User(AbstractUser):
     #pass # 기본 auth_user 테이블과 동일 
     # 새로운 필드 추가 
     user_name = models.CharField(max_length=30)
-    user_adress = models.CharField(max_length=200)    
+    user_address = models.CharField(max_length=200)    
+
+
+

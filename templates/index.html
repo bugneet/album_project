@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>사진 분석 웹사이트</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  {% extends 'base.html' %}
+
+  {% block content %}
+
+<header>
+  {% include 'header.html' %}
+</header>
+
+<main>
+  {% block main %}
+    <section class="photo-upload">
+      <h2>나의 사진 업로드</h2>
+      <p>사진을 업로드하고 분석 결과를 확인하세요.</p>
+      <form action="/upload/" method="post">
+        <input type="file" name="photo">
+        <input type="submit" value="업로드">
+      </form>
+    </section>
+
+    <section class="analysis-results">
+      <h2>분석 결과</h2>
+      <p>사진 업로드 후 확인할 수 있는 분석 결과입니다.</p>
+      <ul>
+        {% for photo in photos %}
+        <li style="width: 200px; height: 300px; margin: 10px;">
+          <img src="{{ photo.image.url }}" alt="{{ photo.title }}">
+          <div class="photo-info">
+            <h4>{{ photo.title }}</h4>
+            <p>{{ photo.description }}</p>
+            <a href="{% url 'delete-photo' photo.id %}">삭제</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endblock %}
+</main>
+
+<footer>
+  {% include 'footer.html' %}
+</footer>
+
+</body>
+</html>
