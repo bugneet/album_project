@@ -1,5 +1,21 @@
 from rest_framework import serializers
-from .models import PhotoTable, Board, Reply
+from .models import PhotoTable, Board, Reply, Liked, UsersAppUser
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UsersAppUser
+        fields = [
+            "id",
+            "username",
+            "first_name", 
+            "last_name",            
+            "user_name",
+            "email",
+            "user_adress",  
+            "last_login",
+            "date_joined",          
+        ]
 
 class PhotoTableSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,6 +31,9 @@ class PhotoTableSerializer(serializers.ModelSerializer):
         ]
 
 class BoardSerializer(serializers.ModelSerializer):
+    photoid = PhotoTableSerializer()
+    id = UserSerializer()
+
     class Meta:
         model = Board
         fields = [
@@ -23,10 +42,17 @@ class BoardSerializer(serializers.ModelSerializer):
             "contents",
             "id",
             "created_time",
-            "photoid",            
+            "photoid",     
+            "board_photo_tag",      
         ]
 
+
+
+
 class ReplySerializer(serializers.ModelSerializer):
+    board_no = BoardSerializer()
+    
+    
     class Meta:
         model = Reply
         fields = [
@@ -35,4 +61,17 @@ class ReplySerializer(serializers.ModelSerializer):
             "replytext",
             "id",
             "regdate",          
+        ]
+
+
+class LikedSerializer(serializers.ModelSerializer):
+    board_no = BoardSerializer()
+    
+    class Meta:
+        model = Liked
+        fields = [
+            "likeno",
+            "board_no",
+            "id",
+            "likedate",          
         ]

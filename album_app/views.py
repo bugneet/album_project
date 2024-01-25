@@ -1,8 +1,8 @@
 import re
 from django.shortcuts import render
 from rest_framework import status, mixins, generics
-from .models import PhotoTable, Board, Reply
-from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer
+from .models import PhotoTable, Board, Reply, Liked
+from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
 import os
 import torch
 from PIL import Image
@@ -149,8 +149,11 @@ def classification(request):
 
 class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
+    userid = "1"
     # 2개 변수 필요 // 임시로 10개만 가져오기 [:10]
-    queryset = PhotoTable.objects.all()[:10]
+    # queryset = PhotoTable.objects.all()[:30000] # 전체 가져오기
+    queryset = PhotoTable.objects.filter(id=userid).order_by('-photodate').all() # 해당userid 가져오기
+
     serializer_class = PhotoTableSerializer
 
     def get(self, request, *args, **kwargs):
@@ -193,14 +196,14 @@ class TagSearch(generics.ListAPIView):
         return self.list(request, *args, **kwargs)
 
 # 내 (userid) 게시글 보기  
-class MyBoard(generics.ListAPIView):
+class MyPost(generics.ListAPIView):
     serializer_class = BoardSerializer
     
     # 로그인 정보에서 유저 id 가져오기
-    userid = "1111"
+    userid = "1"
 
     def get_queryset(self):
-        return Board.objects.filter(id=self.userid) # 완전일치 검색
+        return Board.objects.filter(id=self.userid).select_related('photoid').all() 
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -209,14 +212,56 @@ class MyReply(generics.ListAPIView):
     serializer_class = ReplySerializer
     
     # 로그인 정보에서 유저 id 가져오기
-    userid = "1111"
+    userid = "1"
 
     def get_queryset(self):
-        return Reply.objects.filter(id=self.userid) # 완전일치 검색
+        return Reply.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
+class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
+    queryset = Reply.objects.all()
+    serializer_class = ReplySerializer
+    lookup_field = "rno"  # 기본키
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+
+class MyLiked(generics.ListAPIView):
+    serializer_class = LikedSerializer
+    
+    # 로그인 정보에서 유저 id 가져오기
+    userid = "1"
+
+    def get_queryset(self):
+        return Liked.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
+   
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
+    queryset = Liked.objects.all()
+    serializer_class = LikedSerializer
+    lookup_field = "likeno"  # 기본키
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+class LikedAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+
+    # 2개 변수 필요
+    queryset = Liked.objects.all()
+    serializer_class = LikedSerializer
+
+    def get(self, request, *args, **kwargs):        
+        return self.list(request, *args, **kwargs)
+    
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
 def calculate_image_hash(file_path):
     with Image.open(file_path) as img:
