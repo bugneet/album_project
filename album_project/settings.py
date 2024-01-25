@@ -45,12 +45,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "album_app",
-<<<<<<< HEAD
-    "users_app"
-=======
     "users_app",
     "corsheaders",  # CORS 추가
->>>>>>> kyj
 ]
 
 MIDDLEWARE = [
@@ -147,9 +143,6 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL ='users_app.User'
 
-<<<<<<< HEAD
-=======
 # CORS 추가
 CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
->>>>>>> kyj
