@@ -237,11 +237,11 @@ BASE_DIR = settings.BASE_DIR
 def upload_photo(request):
     if request.method == 'POST':
         if not request.POST.get('csrfmiddlewaretoken'):
-            return HttpResponseForbidden('CSRF token missing or incorrect.')
+            return HttpResponseForbidden('CSRF 토큰이 누락되었거나 잘못되었습니다.')
 
         title = request.POST['title']
         description = request.POST['description']
-        photo = request.FILES['imgFile']  
+        photo = request.FILES['imgFile']
 
         if photo.content_type not in ['image/jpeg', 'image/png']:
             return HttpResponseBadRequest('허용된 파일 형식이 아닙니다.')
@@ -250,21 +250,22 @@ def upload_photo(request):
             return HttpResponseBadRequest('허용된 파일 확장자가 아닙니다.')
 
         photo_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        photo_path = os.path.join('uploads', f'{photo_name}.jpg')  
+        photo_path = os.path.join('Uploads', f'{photo_name}.jpg')
 
-        with open(photo_path, 'wb') as f:
+        with photo.open('wb') as f:
             f.write(photo.read())
 
         try:
             photo = Photo.objects.create(
                 title=title,
                 description=description,
-                image=photo_path.replace(os.path.sep, '/'),  
+                image=photo_path.replace(os.path.sep, '/'),
             )
         except ValidationError as e:
-            return HttpResponseBadRequest(e.messages)
+            return HttpResponseBadRequest(', '.join(e.messages))
 
-        return redirect('classification.html') 
+        return redirect('classification.html')
+
     return render(request, 'upload.html')
 
 
