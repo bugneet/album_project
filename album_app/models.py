@@ -38,6 +38,7 @@ class Board(models.Model):
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id', blank=True, null=True)
     created_time = models.DateTimeField(blank=True, null=True)
     photoid = models.ForeignKey('PhotoTable', models.DO_NOTHING, db_column='photoid', blank=True, null=True)
+    board_photo_tag = models.CharField(max_length=200)
 
     class Meta:
         managed = False
@@ -90,7 +91,7 @@ class DjangoSession(models.Model):
 
 
 class Liked(models.Model):
-    likeno = models.IntegerField(primary_key=True)
+    likeno = models.AutoField(primary_key=True)
     board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
     likedate = models.DateTimeField(blank=True, null=True)
@@ -103,10 +104,10 @@ class Liked(models.Model):
 class PhotoTable(models.Model):
     photoid = models.AutoField(primary_key=True)
     photohash = models.CharField(max_length=50)
-    phototag = models.CharField(max_length=50, blank=True, null=True)       
+    phototag = models.CharField(max_length=200, blank=True, null=True)
     photodate = models.DateTimeField(blank=True, null=True)
     uploaddate = models.DateTimeField(blank=True, null=True)
-    image = models.TextField()
+    image = models.CharField(max_length=200, blank=True, null=True)
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id', blank=True, null=True)
 
     class Meta:
@@ -127,7 +128,7 @@ class RecommendContents(models.Model):
 
 
 class Reply(models.Model):
-    rno = models.IntegerField(primary_key=True)
+    rno = models.AutoField(primary_key=True)
     board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
     replytext = models.CharField(max_length=1000)
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
@@ -151,7 +152,7 @@ class UsersAppUser(models.Model):
     is_active = models.IntegerField()
     date_joined = models.DateTimeField()
     user_name = models.CharField(max_length=30)
-    user_adress = models.CharField(max_length=200)
+    user_address = models.CharField(max_length=200)
 
     class Meta:
         managed = False

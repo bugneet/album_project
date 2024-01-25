@@ -42,10 +42,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    'rest_framework.authtoken',
     "album_app",
     "users_app",
     'django_seed',
-    'corsheaders'
+    "corsheaders",  # CORS 추가
 ]
 
 MIDDLEWARE = [
