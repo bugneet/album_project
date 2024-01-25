@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",            
             "user_name",
             "email",
-            "user_adress",  
+            "user_address",  
             "last_login",
             "date_joined",          
         ]

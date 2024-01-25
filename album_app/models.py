@@ -152,7 +152,7 @@ class UsersAppUser(models.Model):
     is_active = models.IntegerField()
     date_joined = models.DateTimeField()
     user_name = models.CharField(max_length=30)
-    user_adress = models.CharField(max_length=200)
+    user_address = models.CharField(max_length=200)
 
     class Meta:
         managed = False
