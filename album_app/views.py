@@ -25,6 +25,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
+from django.http import JsonResponse
+
+from django.contrib.auth.decorators import login_required
 
 
 # Create your views here.
@@ -39,7 +42,6 @@ def mypage_mypost(request):
 
 def mypage_myreply(request):
     return render(request, 'album_app/mypage_myreply.html')
-
 
 def classification(request):
     
@@ -312,12 +314,27 @@ class MyLiked(generics.ListAPIView):
     
     # 로그인 정보에서 유저 id 가져오기
     # localStorage.getItem("username")
-    userid = "1"
+    # user = get_user_info()
+    userid = "1"        
 
-    def get_queryset(self):
-        return Liked.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
+    # def get_queryset(self, request):
+    #     username = request.query_params.get('username')
+    #     user = UsersAppUser.filter(pk=username)
+    #     return Liked.objects.filter(id=user.id).select_related('board_no').all()  # 완전일치 검색
    
+    def get_queryset(self, request, *args, **kwargs):
+        username = request.query_params.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        queryset = Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
+        data = list(queryset.values())  # 쿼리셋을 딕셔너리의 리스트로 변환
+        return JsonResponse(data, safe=False)  # JsonResponse로 HTTP 응답 반환
+    
     def get(self, request, *args, **kwargs):
+        username = request.query_params.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        queryset = Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
+        data = list(queryset.values())  # 쿼리셋을 딕셔너리의 리스트로 변환
+        return JsonResponse(data, safe=False)  # JsonResponse로 HTTP 응답 반환
         return self.list(request, *args, **kwargs)
 
 class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
