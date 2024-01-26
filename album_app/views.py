@@ -311,6 +311,7 @@ class MyLiked(generics.ListAPIView):
     serializer_class = LikedSerializer
     
     # 로그인 정보에서 유저 id 가져오기
+    # localStorage.getItem("username")
     userid = "1"
 
     def get_queryset(self):
