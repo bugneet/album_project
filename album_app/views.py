@@ -12,10 +12,10 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 from PIL import Image
 from datetime import datetime
-from ultralytics import YOLO
-import torchvision.transforms as transforms
+# from ultralytics import YOLO
+# import torchvision.transforms as transforms
 from operator import itemgetter
-import imagehash
+# import imagehash
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
