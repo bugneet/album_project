@@ -27,6 +27,10 @@ urlpatterns = [
     path('boards/', BoardAPIMixins.as_view()),
     path('board/<str:board_no>/', BoardAPIMixins.as_view()),    
     path('chart_db/', tag_chart),
-    path('chart_db_personal',tag_chart_personal)
+    # path('personal_chart/<int:login_id>',personal_chart)
+    path('personal_chart/<str:username>/',personal_chart),
+    path('tag_chart_yearly/', tag_chart_yearly),
+
+
 ]
 
