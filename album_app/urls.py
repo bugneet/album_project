@@ -17,8 +17,9 @@ urlpatterns = [
     path("myliked/", MyLiked.as_view()),
     path("myreplydel/<str:likeno>/", MyLikedDel.as_view()),
     path("mixin/liked/", LikedAPIMixins.as_view()),    
-    path('upload/', upload_photo, name='upload-photo'),
-
+    path('upload/', upload_photo, name='upload_photo'),
+    path( '', views.index, name='index'),
+    # path('exhibition/', views.exhibition, name='exhibition'),
     path('exhibition/', ExhibitionAPI.as_view()),
     path('exhibition/like/<int:board_no>/', LikeBoardView().as_view()),
     path('exhibition/userlikes/<str:username>/', UserLikesView().as_view()),
