@@ -1,4 +1,4 @@
-import re
+
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
@@ -10,12 +10,9 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
-from PIL import Image
+
 from datetime import datetime
-from ultralytics import YOLO
-import torchvision.transforms as transforms
-from operator import itemgetter
-import imagehash
+
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -30,6 +27,8 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
+from .modules.yolo_detection import detect
+
 
 # Create your views here.
 def index(request):
@@ -44,138 +43,52 @@ def mypage_mypost(request):
 def mypage_myreply(request):
     return render(request, 'album_app/mypage_myreply.html')
 
+# def classification(request):    
+#     file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
 
-def classification(request):
+#     # 객체 탐지 함수 호출
+#     items = detect(file_names) # 이미지 파일명 전달 
     
-    model_path = './static/model/best1.pt'
+#     return render(request, 'album_app/classification.html', {'items' : items, 'alltags' : alltags})
 
-    # YOLO 모델 로드
-    model2 = YOLO('yolov8n.pt')
-
-    # 커스텀 로드
-    model = YOLO(model_path)
-
-    # 이미지 로드
-    img_folder_path = "./static/img/2011-01-01"
-
-    img_paths = []
-
-    file_list = os.listdir(img_folder_path)
-
-    for file_name in file_list: 
-        # print(file_name)
-        img_paths.append(f"{img_folder_path}/{file_name}")
+class Classification(generics.ListAPIView):
+    serializer_class = PhotoTableSerializer
+   
+    def get_queryset(self):
+        
+        file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
+        items = detect(file_names) # 이미지 파일명 전달 
+        return items
     
-    # imgs = [Image.open(img_path) for img_path in img_paths]
-
-    # 이미지 640으로 변환
-    # resize_transform = transforms.Resize((640, 640))
-    # 이미지를 YOLO 모델의 입력으로 변환
-    # img_tensors = [transforms.ToTensor()(resize_transform(img)).unsqueeze_(0) for img in imgs]
-
-    items = []
-    all_tag_dict = {}
-    for idx, img in enumerate(img_paths):
-        
-        # 이미지 객체 검출 실행
-        
-        # 원본
-        results = model(img)
-
-        pred_labels = []
-        # 검출 결과를 레이블로 변환
-        for i, result in enumerate(results):
-            if result.__len__() == 0:
-                break
-            for box in result.boxes.cls:                
-                pred_labels.append(result.names[int(box.item())])
-                # print(f"Label: {model.names[int(class_id)]}, Box: {x.item(), y.item(), w.item(), h.item()}, Confidence: {conf.item()}")
-        
-        tag_dict = {}
-        # 태그 저장 
-        for label in pred_labels:                      
-            if label in tag_dict:
-                # 이미 존재하는 키인 경우, 해당 키의 값을 1 증가시킴
-                tag_dict[label] += 1
-            else:
-                # 새로운 키인 경우, 해당 키를 추가하고 값을 1로 설정
-                tag_dict[label] = 1     
-                # 사진당 감지된 최초 오브젝트 저장 
-                if label in all_tag_dict:
-                    all_tag_dict[label] += 1
-                else:
-                    all_tag_dict[label] = 1              
+    def get(self, request, *args, **kwargs):    
              
-        tags = ("#" + "#".join(tag_dict.keys())).replace(' ', '')     
-
-        # 원본
-        results2 = model2(img)
-
-        pred_labels = []
-        # 검출 결과를 레이블로 변환
-        for i, result in enumerate(results2):
-            if result.__len__() == 0:
-                break
-            for box in result.boxes.cls:                
-                pred_labels.append(result.names[int(box.item())])
-                # print(f"Label: {model.names[int(class_id)]}, Box: {x.item(), y.item(), w.item(), h.item()}, Confidence: {conf.item()}")
-        
-        tag_dict = {}
-        # 태그 저장 
-        for label in pred_labels:                      
-            if label in tag_dict:
-                # 이미 존재하는 키인 경우, 해당 키의 값을 1 증가시킴
-                tag_dict[label] += 1
-            else:
-                # 새로운 키인 경우, 해당 키를 추가하고 값을 1로 설정
-                tag_dict[label] = 1     
-                # 사진당 감지된 최초 오브젝트 저장 
-                if label in all_tag_dict:
-                    all_tag_dict[label] += 1
-                else:
-                    all_tag_dict[label] = 1              
-             
-        tags2 = ("#" + "#".join(tag_dict.keys())).replace(' ', '')  
-
-        tags += tags2
-        # print(f"{idx}번째 사진 태그 = {tags.replace(' ', '')}")
-        
-        ############ 임시로 #일상 태그 넣기###################
-        tags += "#일상"
-        ######################################################
-        tags = re.sub(r'#+', '#', tags)
-        # tags = tags.replace("##", "#") 
-        
-        ############사진 파일 안에 날짜정보가 없을 경우############
-        # 현재 날짜 및 시간 받아오기
-        current_date_time = datetime.now()
-        # 날짜만 받아오기
-        current_date = current_date_time.date()
-        # print(current_date)
-        items.append({'title':idx, 'date':current_date, 'tags':tags, 'img_path':file_list[idx]})    
+        print(request.session.items())    
+        return self.list(request, *args, **kwargs)
     
-    # 딕셔너리 value값으로 정렬
-    sorted_items = sorted(all_tag_dict.items(), key=itemgetter(1), reverse=True)
-    sorted_dict = dict(sorted_items)
+@api_view(['POST'])
+def save_data(request):   
 
-    alltags = ""
-    for key, value in sorted_dict.items():         
-        alltags += f"#{key}({value})" 
+    if request.method == 'POST':
+        print(request.data)
+        serializer = PhotoTableSerializer(data=request.data, many=True)        
 
-    # alltags_set = {f"{key}({value})" for key, value in sorted_dict.items()}
-    # alltags = '#{}'.format('#'.join(str(item) for item in alltags_set))
-    return render(request, 'album_app/classification.html', {'items' : items, 'alltags' : alltags})
-
-
+        if serializer.is_valid():
+            # 데이터 유효성 검사 후 저장
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
-    userid = "1"
-    # 2개 변수 필요 // 임시로 10개만 가져오기 [:10]
-    # queryset = PhotoTable.objects.all()[:30000] # 전체 가져오기
-    queryset = PhotoTable.objects.filter(id=userid).order_by('-photodate').all() # 해당userid 가져오기
-
     serializer_class = PhotoTableSerializer
+    
+    def get_queryset(self):
+        # username = request.query_params.get('username')        
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
 
+        return PhotoTable.objects.filter(id=user[0].id).order_by('-photodate').all()  # 완전일치 검색
+    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
     
@@ -278,13 +191,12 @@ class BoardAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Ge
 
 # 내 (userid) 게시글 보기  
 class MyPost(generics.ListAPIView):
-    serializer_class = BoardSerializer
-    
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
+    serializer_class = BoardSerializer  
 
     def get_queryset(self):
-        return Board.objects.filter(id=self.userid).select_related('photoid').all() 
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        return Board.objects.filter(id=user[0].id).select_related('photoid').all() 
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -292,13 +204,13 @@ class MyPost(generics.ListAPIView):
 class MyReply(generics.ListAPIView):
     serializer_class = ReplySerializer
     
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
-
     def get_queryset(self):
-        return Reply.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        return Reply.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
    
     def get(self, request, *args, **kwargs):
+        print(request.user)
         return self.list(request, *args, **kwargs)
 
 class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
@@ -313,14 +225,17 @@ class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
 
 class MyLiked(generics.ListAPIView):
     serializer_class = LikedSerializer
-    
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
-
-    def get_queryset(self):
-        return Liked.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
    
-    def get(self, request, *args, **kwargs):
+    def get_queryset(self):
+        # username = request.query_params.get('username')        
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+
+        return Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색    
+    
+    def get(self, request, *args, **kwargs):    
+             
+        print(request.session.items())    
         return self.list(request, *args, **kwargs)
 
 class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
@@ -344,10 +259,10 @@ class LikedAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Ge
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
-def calculate_image_hash(file_path):
-    with Image.open(file_path) as img:
-        hash_value = imagehash.average_hash(img)
-    return hash_value
+# def calculate_image_hash(file_path):
+#     with Image.open(file_path) as img:
+#         hash_value = imagehash.average_hash(img)
+#     return hash_value
 
 BASE_DIR = settings.BASE_DIR
 
