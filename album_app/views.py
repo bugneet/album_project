@@ -25,7 +25,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
-
+from django.http import JsonResponse
 
 # Create your views here.
 def index(request):
@@ -350,24 +350,42 @@ BASE_DIR = settings.BASE_DIR
 def upload_photo(request):
     if request.method == 'POST':
         if not request.POST.get('csrfmiddlewaretoken'):
-            return HttpResponseForbidden('CSRF 토큰이 누락되었거나 잘못되었습니다.')
+            return JsonResponse({'error': 'CSRF 토큰이 누락되었거나 잘못되었습니다.'}, status=400)
 
         title = request.POST['title']
         description = request.POST['description']
-        photo = request.FILES['imgFile']
+        photo = request.FILES['imgFile0']  # 클라이언트에서 'imgFile0'으로 지정한 것에 맞게 수정
 
         if photo.content_type not in ['image/jpeg', 'image/png']:
-            return HttpResponseBadRequest('허용된 파일 형식이 아닙니다.')
+            return JsonResponse({'error': '허용된 파일 형식이 아닙니다.'}, status=400)
 
         if not photo.name.lower().endswith(('.jpg', '.jpeg', '.png')):
-            return HttpResponseBadRequest('허용된 파일 확장자가 아닙니다.')
+            return JsonResponse({'error': '허용된 파일 확장자가 아닙니다.'}, status=400)
 
-        photo_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        photo_path = os.path.join('Uploads', f'{photo_name}.jpg')
+        # 원하는 경로에 이미지 저장
+        upload_path = os.path.join(BASE_DIR, 'media', 'Upload')
+        if not os.path.exists(upload_path):
+            os.makedirs(upload_path)
 
-        with photo.open('wb') as f:
-            f.write(photo.read())
-      
+        photo_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_img.jpg"
+        photo_path = os.path.join(upload_path, photo_name)
+
+        with open(photo_path, 'wb') as f:
+            for chunk in photo.chunks():
+                f.write(chunk)
+
+        # 이미지 정보 반환
+        response_data = {
+            'title': title,
+            'description': description,
+            'photo_path': photo_path,
+            'photo_name': photo_name,
+        }
+
+        return JsonResponse(response_data, status=200)
+
+    return JsonResponse({'error': '올바른 요청이 아닙니다.'}, status=400)
+
 class TagSearch(generics.ListAPIView):
     serializer_class = PhotoTableSerializer
 
