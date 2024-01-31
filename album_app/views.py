@@ -225,6 +225,69 @@ def personal_chart(request, **kwargs):
     
     return Response(result_top10)
 
+# 개인분석 -연도별
+@api_view(['GET'])
+def personal_chart_yearly(request, **kwargs):
+    username = kwargs.get('username')
+
+    # 사용자 정보 가져오기
+    user = UsersAppUser.objects.filter(username=username).first()
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+
+    if user:
+        # 해당 사용자의 ID 가져오기
+        user_id = user.id
+
+        # 2004년부터 2009년까지 연도별 태그별 이미지 카운트
+        data = (
+            PhotoTable.objects
+            .filter(id=user_id, uploaddate__year__range=(2004, 2009))
+            .values('phototag', 'uploaddate__year')
+        )
+
+        # 결과를 딕셔너리 형태로 구성
+        result_dict = {}
+        for entry in data:
+            year = entry['uploaddate__year']
+            tags = entry['phototag'].split('#')  # #으로 구분된 태그 파싱
+            for tag in tags:
+                tagname = tag.strip()  # 태그 양쪽의 공백 제거
+                if not tagname:
+                    continue  # 빈 문자열이면 스킵
+
+                if tagname in name_list:
+                    if year not in result_dict:
+                        result_dict[year] = {}
+
+                    if tagname not in result_dict[year]:
+                        result_dict[year][tagname] = 1
+                    else:
+                        result_dict[year][tagname] += 1
+
+        # 연도별 리스트로 구성
+        result_list = []
+        for year, tags in result_dict.items():
+            tags_list = [{'tagname': tagname, 'tagcount': tagcount} for tagname, tagcount in tags.items()]
+            result_list.append({'year': year, 'tags': tags_list})
+
+        return Response(result_list)
+
+    
+
+
 # 전체 분석 차트 
 @api_view(['GET'])
 def tag_chart(request):
@@ -258,7 +321,7 @@ def tag_chart(request):
 
 # 전체 분석 차트 - 연도별 분석
 @api_view(['GET'])
-def tag_chart_yearly(request):
+def tag_chart_yearly2(request):
     lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
           '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
             '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
@@ -278,7 +341,7 @@ def tag_chart_yearly(request):
         result=[]
         
 
-        for year in range(2004, 2015):
+        for year in range(2004, 2010):
             start_month = 1 
             end_month = 12  
 
@@ -305,6 +368,42 @@ def tag_chart_yearly(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['GET'])
+def tag_chart_yearly(request, start_year=None, start_month=None, end_year=None, end_month=None):
+    try:
+        lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' ,
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+        tag_count = []
+
+        for x in lis:
+            count = PhotoTable.objects.filter(
+                phototag__contains=x,
+                uploaddate__year__range=(start_year, end_year),
+                uploaddate__month__range=(start_month, end_month)
+            ).count()
+            tag_count.append({"tagname": x, "tagcount": count})
+
+        result_top10 = sorted(tag_count, key=lambda x: x['tagcount'], reverse=True)[:10]
+        tagcount_sum = sum(tag["tagcount"] for tag in result_top10)
+        result_top10.append({"tagcount 합계:", tagcount_sum})
+        return Response(result_top10)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+    
 
 
 
