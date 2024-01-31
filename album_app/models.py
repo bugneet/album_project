@@ -31,6 +31,16 @@ class AuthPermission(models.Model):
         unique_together = (('content_type', 'codename'),)
 
 
+class AuthtokenToken(models.Model):
+    key = models.CharField(primary_key=True, max_length=40)
+    created = models.DateTimeField()
+    user = models.OneToOneField('UsersAppUser', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'authtoken_token'
+
+        
 class Board(models.Model):
     board_no = models.AutoField(primary_key=True)
     title = models.CharField(max_length=100)
