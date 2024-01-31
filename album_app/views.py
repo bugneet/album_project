@@ -12,10 +12,10 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 from PIL import Image
 from datetime import datetime
-# from ultralytics import YOLO
-# import torchvision.transforms as transforms
+from ultralytics import YOLO
+import torchvision.transforms as transforms
 from operator import itemgetter
-# import imagehash
+import imagehash
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -596,9 +596,6 @@ class RecommendContents(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
     def recommend_content(self, df):
-        # 여기에 좀 더 복잡한 컨텐츠 추천 로직을 구현
-        # 예를 들어, 각 유저별로 가장 많이 등장하는 태그를 찾는 등의 방식으로 추천 가능
-        # 추천 결과를 반환
         recommended_content = df['tag'].value_counts().idxmax()
         return {'recommended_content': recommended_content}
 
