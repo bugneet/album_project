@@ -19,13 +19,17 @@ from operator import itemgetter
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.views import APIView
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.views import APIView, View
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.http import JsonResponse
 
 # Create your views here.
 def index(request):
@@ -385,47 +389,33 @@ class ExhibitionAPI(
 
     def get_queryset(self):
         return Board.objects.order_by('-created_time')
-
-    def get_paginated_boards(self, queryset, page, board_per_page):
-        paginator = Paginator(queryset, board_per_page)
-
-        try:
-            boards = paginator.page(page)
-        except PageNotAnInteger:
-            boards = paginator.page(1)
-        except EmptyPage:
-            boards = paginator.page(paginator.num_pages)
-
-        return boards, paginator.num_pages
-
+    
     def get_likes_and_replies(self, boards):
+        boards = Board.objects.all()
+
         likes_and_replies = []
         for board in boards:
             likes_count = Liked.objects.filter(board_no=board.board_no).count()
             replies = Reply.objects.filter(board_no=board.board_no)
+            reply_list = [{'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
+            sorted_replies = sorted(reply_list, key=lambda x: x['regdate'], reverse=True)
             likes_and_replies.append({
-                'id' : board.board_no,
+                'board_no' : board.board_no,
                 'likes_count' : likes_count,
-                'replies': [{'id': reply.rno, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies],
+                'replies': sorted_replies,
             })
         return likes_and_replies
 
     def get(self, request, *args, **kwargs):
-        board_per_page = 5
-        page = request.query_params.get('page', 1)
-
-        queryset = self.get_queryset()
-        boards, last_pages = self.get_paginated_boards(queryset, page, board_per_page)
-
+        boards = self.get_queryset()
+        
         all_phototags = (
-            PhotoTable.objects
-            .filter(photoid__in=Board.objects.values('photoid'))
-            .values_list('phototag', flat=True)
+            Board.objects
+            .values_list('board_photo_tag', flat=True)
             .distinct()
         )
 
         tag_counter = Counter(tag for phototag in all_phototags for tag in phototag.split('#') if tag)
-        # print(tag_counter)
         tag_frequency_list = [(tag, count) for tag, count in tag_counter.items()]
         tag_frequency_list.sort(key=lambda x: x[1], reverse=True)
 
@@ -434,7 +424,6 @@ class ExhibitionAPI(
         response_data = {
             'boards': serializer.data,
             'all_phototags': tag_frequency_list,
-            'last_pages': last_pages
         }
 
         likes_and_replies = self.get_likes_and_replies(boards)
@@ -444,20 +433,18 @@ class ExhibitionAPI(
 
     def post(self, request, *args, **kwargs):
         selected_tags = request.data.get('selectedtags', [])
-        print(selected_tags)
 
         if selected_tags:
-            tag_queries = [Q(photoid__phototag__contains=tag) for tag in selected_tags]
+            tag_queries = [Q(board_photo_tag__contains=tag) for tag in selected_tags]
 
             combined_query = tag_queries.pop()
             for query in tag_queries:
-                combined_query |= query
+                combined_query &= query
 
-            queryset = Board.objects.filter(combined_query).order_by('-created_time')
+            boards = Board.objects.filter(combined_query).order_by('-created_time')
         else:
-            queryset = Board.objects.all().order_by('-created_time')
+            boards = Board.objects.all().order_by('-created_time')
 
-        boards, last_pages = self.get_paginated_boards(queryset, 1, 5)
 
         likes_and_replies = self.get_likes_and_replies(boards)
 
@@ -465,90 +452,103 @@ class ExhibitionAPI(
 
         response_data = {
             'boards': serializer.data,
-            'last_pages': last_pages,
             'likes_and_replies': likes_and_replies,
         }
 
         return Response(response_data)
 
-class CurrentUserView(APIView):
-    # authentication_classes = [SessionAuthentication, BasicAuthentication]
-    # permission_classes = [IsAuthenticated]
+class LikeBoardView(APIView):
+    def post(self, request, board_no, format=None):
+        user = get_object_or_404(UsersAppUser, username=request.data.get('username'))
+        board = get_object_or_404(Board, board_no=board_no)
 
-    def get(self, request):
-        user = request.user
-        response_data = {
-            'username': user.username,
-            'id': user.id,
-        }
-        return Response(response_data)
+        try:
+            like = Liked.objects.get(board_no=board, id=user.id)
+            like.delete()
+            liked = False
+        except Liked.DoesNotExist:
+            new_like = Liked(board_no=board, id=user, likedate=timezone.now())
+            new_like.save()
+            liked = True
+
+        return Response({'liked': liked}, status=status.HTTP_201_CREATED)
+
+class AddReply(APIView):
+    def post(self, request, board_no):
+        try:
+            board = Board.objects.get(board_no=board_no)
+            user = get_object_or_404(UsersAppUser, username=request.data.get('username', ''))
+            reply_text = request.data.get('comment', '')
+            Reply.objects.create(board_no=board, id=user, replytext=reply_text, regdate=timezone.now())
+
+            return Response({'message' : '댓글이 추가되었습니다.'})
+        
+        except Board.DoesNotExist:
+            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        
+class UserLikesView(APIView):
+    def get(self, request, username, format=None):
+        user = get_object_or_404(UsersAppUser, username=username)
+        try:
+            user_likes = Liked.objects.filter(id=user)
+            liked_boards = [liked.board_no.board_no for liked in user_likes]
+            return Response({'liked_boards': liked_boards}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class BoardWritingView(APIView):
     def post(self, request, format=None):
         title = request.data.get('title', '')
         contents = request.data.get('contents', '')
         created_time = request.data.get('created_time', None)
+        tags = request.data.get('tags')
         photoid = request.data.get('photoid')
-        
+        username = request.data.get('username')
         photo_instance = PhotoTable.objects.get(photoid=int(photoid))
-        user_id = 1
-    
-        user = get_object_or_404(UsersAppUser, pk=user_id)
 
-        new_board = Board(title=title, contents=contents, created_time=created_time, id=user, photoid=photo_instance)
+        user = get_object_or_404(UsersAppUser, username=username)
+
+        new_board = Board(title=title, contents=contents, board_photo_tag=tags, created_time=created_time, id=user, photoid=photo_instance)
         new_board.save()
 
         serializer = BoardSerializer(new_board)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class PhotoListView(APIView):
-    def get(self, request, *args, **kwargs):
-        user_id = 1
-        user = get_object_or_404(UsersAppUser, pk=user_id)
+    def get(self, request, username, **kwargs):
+        print(username)
+        user = get_object_or_404(UsersAppUser, username=username)
+        print(user)
         photos = PhotoTable.objects.filter(id=user)
+        print(photos)
         serializer_photos = PhotoTableSerializer(photos, many=True).data
 
         return Response({'photos': serializer_photos}, status=status.HTTP_200_OK)
 
-class LikeBoard(APIView):
-    permission_classes = [IsAuthenticated]
+class BoardUpdate(APIView):
+    def get(self, request, board_no, format=None):
+        board = get_object_or_404(Board, board_no=board_no)
+        serializer = BoardSerializer(board)
+        return Response(serializer.data)
+    
+    def post(self, request, board_no, format=None):
+        title = request.data.get('title', '')
+        contents = request.data.get('contents', '')
+        created_time = request.data.get('created_time', None)
+        tags = request.data.get('tags')
+        photoid = request.data.get('photoid')
+        username = request.data.get('username')
+        photo_instance = PhotoTable.objects.get(photoid=int(photoid))
 
-    def post(self, request, board_no):
-        try:
-            board = Board.objects.get(board_no=board_no)
-            user = request.user
+        user = get_object_or_404(UsersAppUser, username=username)
 
-            if Liked.objects.filter(board_no=board.board_no, id=user.id).exists():
-                Liked.objects.filter(board_no=board.board_no, id=user.id).delete()
-                message = '좋아요 취소'
-            else:
-                Liked.objects.create(board_no=board.board_no, id=user.id)
-                message = '좋아요 추가'
+        new_board = Board(board_no=board_no, title=title, contents=contents, board_photo_tag=tags, created_time=created_time, id=user, photoid=photo_instance)
+        new_board.save()
 
-            return Response({'message': message})
-
-        except Board.DoesNotExist:
-            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
-class AddReply(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, board_no):
-        try:
-            board = Board.objects.get(board_no=board_no)
-            user = request.user
-            reply_text = request.data.get('replytext', '')
-
-            Reply.objects.create(board_no=board.board_no, id=user.id, replytext=reply_text)
-
-            return Response({'message' : '댓글이 추가되었습니다.'})
-        
-        except Board.DoesNotExist:
-            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
-class BoardAPIMixins(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
+        serializer = BoardSerializer(new_board)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class BoardDelete(
     mixins.DestroyModelMixin,
     generics.GenericAPIView,
 ):
@@ -556,11 +556,49 @@ class BoardAPIMixins(
     serializer_class = BoardSerializer
     lookup_field = "board_no"
 
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
     def delete(self, request, *args, **kwargs):
+        board = self.get_object()
+        board.liked_posts.all().delete()
+        board.replies.all().delete()
+
         return self.destroy(request, *args, **kwargs)
+
+import pandas as pd
+class RecommendContents(APIView):
+    def get(self, request, *args, **kwargs):
+        all_photos = PhotoTable.objects.all()
+        data_list = []
+
+        user_tags={}
+        for photo in all_photos:
+            username = photo.id.username
+            phototag = photo.phototag
+
+            if username not in user_tags:
+                user_tags[username] = set()
+            
+            user_tags[username].add(phototag)
+
+        for username, tags in user_tags.items():
+            for tag in tags:
+                data_list.append({
+                    'username' : username,
+                    'tag' : tag
+                })
+
+        df = pd.DataFrame(data_list)
+        recomment_content = self.recommend_content(df)
+
+        print(recomment_content)
+        response_data = {
+            'recomment_content':df,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def recommend_content(self, df):
+        # 여기에 좀 더 복잡한 컨텐츠 추천 로직을 구현
+        # 예를 들어, 각 유저별로 가장 많이 등장하는 태그를 찾는 등의 방식으로 추천 가능
+        # 추천 결과를 반환
+        recommended_content = df['tag'].value_counts().idxmax()
+        return {'recommended_content': recommended_content}
+

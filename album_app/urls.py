@@ -18,14 +18,19 @@ urlpatterns = [
     path("myreplydel/<str:likeno>/", MyLikedDel.as_view()),
     path("mixin/liked/", LikedAPIMixins.as_view()),    
     path('upload/', upload_photo, name='upload-photo'),
-    path( '', views.index, name='index'),
-    # path('exhibition/', views.exhibition, name='exhibition'),
+
     path('exhibition/', ExhibitionAPI.as_view()),
-    path('current_user/', CurrentUserView.as_view()),
+    path('exhibition/like/<int:board_no>/', LikeBoardView().as_view()),
+    path('exhibition/userlikes/<str:username>/', UserLikesView().as_view()),
+    path('exhibition/add_comment/<int:board_no>/', AddReply().as_view()),
+
     path('board_writing/', BoardWritingView.as_view()),
-    path('photos/<int:user_id>/', PhotoListView.as_view()),
-    path('boards/', BoardAPIMixins.as_view()),
-    path('board/<str:board_no>/', BoardAPIMixins.as_view()),    
+    path('photos/<str:username>/', PhotoListView.as_view()),
+
+    path('board/<int:board_no>/', BoardUpdate.as_view()),  
+    path('board_delete/<int:board_no>', BoardDelete.as_view()),
+    path('recommend_contents/', RecommendContents.as_view()),
+      
     path('chart_db/', tag_chart),
     path('chart_db_personal',tag_chart_personal)
 ]
