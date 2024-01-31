@@ -102,7 +102,7 @@ class DjangoSession(models.Model):
 
 class Liked(models.Model):
     likeno = models.AutoField(primary_key=True)
-    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
+    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no', related_name='liked_posts')
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
     likedate = models.DateTimeField(blank=True, null=True)
 
@@ -139,7 +139,7 @@ class RecommendContents(models.Model):
 
 class Reply(models.Model):
     rno = models.AutoField(primary_key=True)
-    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
+    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no',  related_name='replies')
     replytext = models.CharField(max_length=1000)
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
     regdate = models.DateTimeField(blank=True, null=True)

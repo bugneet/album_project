@@ -29,7 +29,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR.parent, 'upload')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -148,5 +148,8 @@ AUTH_USER_MODEL ='users_app.User'
 LOGIN_REDIRECT_URL = '/'
 
 # CORS 추가
-CORS_ORIGIN_WHITELIST = ("http://127.0.0.1:8000", "http://localhost:3000")
+CORS_ORIGIN_WHITELIST = [
+    "http://127.0.0.1:8000", 
+    "http://localhost:3000"
+]
 CORS_ALLOW_CREDENTIALS = True
