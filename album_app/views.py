@@ -5,7 +5,7 @@ from .models import *
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
 import os
 from django.conf import settings
-from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
@@ -26,6 +26,8 @@ from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime
 
 # Create your views here.
 def index(request):
@@ -347,6 +349,7 @@ def calculate_image_hash(file_path):
 
 BASE_DIR = settings.BASE_DIR
 
+@csrf_exempt
 def upload_photo(request):
     if request.method == 'POST':
         if not request.POST.get('csrfmiddlewaretoken'):
@@ -354,7 +357,7 @@ def upload_photo(request):
 
         title = request.POST['title']
         description = request.POST['description']
-        photo = request.FILES['imgFile0']  # 클라이언트에서 'imgFile0'으로 지정한 것에 맞게 수정
+        photo = request.FILES['imgFile0']
 
         if photo.content_type not in ['image/jpeg', 'image/png']:
             return JsonResponse({'error': '허용된 파일 형식이 아닙니다.'}, status=400)
@@ -363,7 +366,7 @@ def upload_photo(request):
             return JsonResponse({'error': '허용된 파일 확장자가 아닙니다.'}, status=400)
 
         # 원하는 경로에 이미지 저장
-        upload_path = os.path.join(BASE_DIR, 'media', 'Upload')
+        upload_path = os.path.join('media', 'Upload')
         if not os.path.exists(upload_path):
             os.makedirs(upload_path)
 
@@ -385,6 +388,12 @@ def upload_photo(request):
         return JsonResponse(response_data, status=200)
 
     return JsonResponse({'error': '올바른 요청이 아닙니다.'}, status=400)
+
+
+def generate_new_filename(original_filename):
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    name, extension = os.path.splitext(original_filename)
+    return f"{timestamp}_{name}{extension}"
 
 class TagSearch(generics.ListAPIView):
     serializer_class = PhotoTableSerializer
