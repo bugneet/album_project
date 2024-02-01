@@ -1,4 +1,4 @@
-import re
+
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
@@ -10,24 +10,27 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
-from PIL import Image
+
 from datetime import datetime
-from ultralytics import YOLO
-import torchvision.transforms as transforms
-from operator import itemgetter
-import imagehash
+
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.views import APIView
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.views import APIView, View
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
+
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
+from .modules.yolo_detection import detect
+
 
 # Create your views here.
 def index(request):
@@ -42,138 +45,52 @@ def mypage_mypost(request):
 def mypage_myreply(request):
     return render(request, 'album_app/mypage_myreply.html')
 
+# def classification(request):    
+#     file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
 
-def classification(request):
+#     # 객체 탐지 함수 호출
+#     items = detect(file_names) # 이미지 파일명 전달 
     
-    model_path = './static/model/best1.pt'
+#     return render(request, 'album_app/classification.html', {'items' : items, 'alltags' : alltags})
 
-    # YOLO 모델 로드
-    model2 = YOLO('yolov8n.pt')
-
-    # 커스텀 로드
-    model = YOLO(model_path)
-
-    # 이미지 로드
-    img_folder_path = "./static/img/2011-01-01"
-
-    img_paths = []
-
-    file_list = os.listdir(img_folder_path)
-
-    for file_name in file_list: 
-        # print(file_name)
-        img_paths.append(f"{img_folder_path}/{file_name}")
+class Classification(generics.ListAPIView):
+    serializer_class = PhotoTableSerializer
+   
+    def get_queryset(self):
+        
+        file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
+        items = detect(file_names) # 이미지 파일명 전달 
+        return items
     
-    # imgs = [Image.open(img_path) for img_path in img_paths]
-
-    # 이미지 640으로 변환
-    # resize_transform = transforms.Resize((640, 640))
-    # 이미지를 YOLO 모델의 입력으로 변환
-    # img_tensors = [transforms.ToTensor()(resize_transform(img)).unsqueeze_(0) for img in imgs]
-
-    items = []
-    all_tag_dict = {}
-    for idx, img in enumerate(img_paths):
-        
-        # 이미지 객체 검출 실행
-        
-        # 원본
-        results = model(img)
-
-        pred_labels = []
-        # 검출 결과를 레이블로 변환
-        for i, result in enumerate(results):
-            if result.__len__() == 0:
-                break
-            for box in result.boxes.cls:                
-                pred_labels.append(result.names[int(box.item())])
-                # print(f"Label: {model.names[int(class_id)]}, Box: {x.item(), y.item(), w.item(), h.item()}, Confidence: {conf.item()}")
-        
-        tag_dict = {}
-        # 태그 저장 
-        for label in pred_labels:                      
-            if label in tag_dict:
-                # 이미 존재하는 키인 경우, 해당 키의 값을 1 증가시킴
-                tag_dict[label] += 1
-            else:
-                # 새로운 키인 경우, 해당 키를 추가하고 값을 1로 설정
-                tag_dict[label] = 1     
-                # 사진당 감지된 최초 오브젝트 저장 
-                if label in all_tag_dict:
-                    all_tag_dict[label] += 1
-                else:
-                    all_tag_dict[label] = 1              
+    def get(self, request, *args, **kwargs):    
              
-        tags = ("#" + "#".join(tag_dict.keys())).replace(' ', '')     
-
-        # 원본
-        results2 = model2(img)
-
-        pred_labels = []
-        # 검출 결과를 레이블로 변환
-        for i, result in enumerate(results2):
-            if result.__len__() == 0:
-                break
-            for box in result.boxes.cls:                
-                pred_labels.append(result.names[int(box.item())])
-                # print(f"Label: {model.names[int(class_id)]}, Box: {x.item(), y.item(), w.item(), h.item()}, Confidence: {conf.item()}")
-        
-        tag_dict = {}
-        # 태그 저장 
-        for label in pred_labels:                      
-            if label in tag_dict:
-                # 이미 존재하는 키인 경우, 해당 키의 값을 1 증가시킴
-                tag_dict[label] += 1
-            else:
-                # 새로운 키인 경우, 해당 키를 추가하고 값을 1로 설정
-                tag_dict[label] = 1     
-                # 사진당 감지된 최초 오브젝트 저장 
-                if label in all_tag_dict:
-                    all_tag_dict[label] += 1
-                else:
-                    all_tag_dict[label] = 1              
-             
-        tags2 = ("#" + "#".join(tag_dict.keys())).replace(' ', '')  
-
-        tags += tags2
-        # print(f"{idx}번째 사진 태그 = {tags.replace(' ', '')}")
-        
-        ############ 임시로 #일상 태그 넣기###################
-        tags += "#일상"
-        ######################################################
-        tags = re.sub(r'#+', '#', tags)
-        # tags = tags.replace("##", "#") 
-        
-        ############사진 파일 안에 날짜정보가 없을 경우############
-        # 현재 날짜 및 시간 받아오기
-        current_date_time = datetime.now()
-        # 날짜만 받아오기
-        current_date = current_date_time.date()
-        # print(current_date)
-        items.append({'title':idx, 'date':current_date, 'tags':tags, 'img_path':file_list[idx]})    
+        print(request.session.items())    
+        return self.list(request, *args, **kwargs)
     
-    # 딕셔너리 value값으로 정렬
-    sorted_items = sorted(all_tag_dict.items(), key=itemgetter(1), reverse=True)
-    sorted_dict = dict(sorted_items)
+@api_view(['POST'])
+def save_data(request):   
 
-    alltags = ""
-    for key, value in sorted_dict.items():         
-        alltags += f"#{key}({value})" 
+    if request.method == 'POST':
+        print(request.data)
+        serializer = PhotoTableSerializer(data=request.data, many=True)        
 
-    # alltags_set = {f"{key}({value})" for key, value in sorted_dict.items()}
-    # alltags = '#{}'.format('#'.join(str(item) for item in alltags_set))
-    return render(request, 'album_app/classification.html', {'items' : items, 'alltags' : alltags})
-
-
+        if serializer.is_valid():
+            # 데이터 유효성 검사 후 저장
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
-    userid = "1"
-    # 2개 변수 필요 // 임시로 10개만 가져오기 [:10]
-    # queryset = PhotoTable.objects.all()[:30000] # 전체 가져오기
-    queryset = PhotoTable.objects.filter(id=userid).order_by('-photodate').all() # 해당userid 가져오기
-
     serializer_class = PhotoTableSerializer
+    
+    def get_queryset(self):
+        # username = request.query_params.get('username')        
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
 
+        return PhotoTable.objects.filter(id=user[0].id).order_by('-photodate').all()  # 완전일치 검색
+    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
     
@@ -276,13 +193,12 @@ class BoardAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Ge
 
 # 내 (userid) 게시글 보기  
 class MyPost(generics.ListAPIView):
-    serializer_class = BoardSerializer
-    
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
+    serializer_class = BoardSerializer  
 
     def get_queryset(self):
-        return Board.objects.filter(id=self.userid).select_related('photoid').all() 
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        return Board.objects.filter(id=user[0].id).select_related('photoid').all() 
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -290,13 +206,13 @@ class MyPost(generics.ListAPIView):
 class MyReply(generics.ListAPIView):
     serializer_class = ReplySerializer
     
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
-
     def get_queryset(self):
-        return Reply.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+        return Reply.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
    
     def get(self, request, *args, **kwargs):
+        print(request.user)
         return self.list(request, *args, **kwargs)
 
 class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
@@ -311,14 +227,17 @@ class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
 
 class MyLiked(generics.ListAPIView):
     serializer_class = LikedSerializer
-    
-    # 로그인 정보에서 유저 id 가져오기
-    userid = "1"
-
-    def get_queryset(self):
-        return Liked.objects.filter(id=self.userid).select_related('board_no').all()  # 완전일치 검색
    
-    def get(self, request, *args, **kwargs):
+    def get_queryset(self):
+        # username = request.query_params.get('username')        
+        username = self.kwargs.get('username')
+        user = UsersAppUser.objects.filter(username=username) 
+
+        return Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색    
+    
+    def get(self, request, *args, **kwargs):    
+             
+        print(request.session.items())    
         return self.list(request, *args, **kwargs)
 
 class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
@@ -342,10 +261,10 @@ class LikedAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Ge
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
-def calculate_image_hash(file_path):
-    with Image.open(file_path) as img:
-        hash_value = imagehash.average_hash(img)
-    return hash_value
+# def calculate_image_hash(file_path):
+#     with Image.open(file_path) as img:
+#         hash_value = imagehash.average_hash(img)
+#     return hash_value
 
 BASE_DIR = settings.BASE_DIR
 
@@ -412,47 +331,33 @@ class ExhibitionAPI(
 
     def get_queryset(self):
         return Board.objects.order_by('-created_time')
-
-    def get_paginated_boards(self, queryset, page, board_per_page):
-        paginator = Paginator(queryset, board_per_page)
-
-        try:
-            boards = paginator.page(page)
-        except PageNotAnInteger:
-            boards = paginator.page(1)
-        except EmptyPage:
-            boards = paginator.page(paginator.num_pages)
-
-        return boards, paginator.num_pages
-
+    
     def get_likes_and_replies(self, boards):
+        boards = Board.objects.all()
+
         likes_and_replies = []
         for board in boards:
             likes_count = Liked.objects.filter(board_no=board.board_no).count()
             replies = Reply.objects.filter(board_no=board.board_no)
+            reply_list = [{'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
+            sorted_replies = sorted(reply_list, key=lambda x: x['regdate'], reverse=True)
             likes_and_replies.append({
-                'id' : board.board_no,
+                'board_no' : board.board_no,
                 'likes_count' : likes_count,
-                'replies': [{'id': reply.rno, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies],
+                'replies': sorted_replies,
             })
         return likes_and_replies
 
     def get(self, request, *args, **kwargs):
-        board_per_page = 5
-        page = request.query_params.get('page', 1)
-
-        queryset = self.get_queryset()
-        boards, last_pages = self.get_paginated_boards(queryset, page, board_per_page)
-
+        boards = self.get_queryset()
+        
         all_phototags = (
-            PhotoTable.objects
-            .filter(photoid__in=Board.objects.values('photoid'))
-            .values_list('phototag', flat=True)
+            Board.objects
+            .values_list('board_photo_tag', flat=True)
             .distinct()
         )
 
         tag_counter = Counter(tag for phototag in all_phototags for tag in phototag.split('#') if tag)
-        # print(tag_counter)
         tag_frequency_list = [(tag, count) for tag, count in tag_counter.items()]
         tag_frequency_list.sort(key=lambda x: x[1], reverse=True)
 
@@ -461,7 +366,6 @@ class ExhibitionAPI(
         response_data = {
             'boards': serializer.data,
             'all_phototags': tag_frequency_list,
-            'last_pages': last_pages
         }
 
         likes_and_replies = self.get_likes_and_replies(boards)
@@ -471,20 +375,18 @@ class ExhibitionAPI(
 
     def post(self, request, *args, **kwargs):
         selected_tags = request.data.get('selectedtags', [])
-        print(selected_tags)
 
         if selected_tags:
-            tag_queries = [Q(photoid__phototag__contains=tag) for tag in selected_tags]
+            tag_queries = [Q(board_photo_tag__contains=tag) for tag in selected_tags]
 
             combined_query = tag_queries.pop()
             for query in tag_queries:
-                combined_query |= query
+                combined_query &= query
 
-            queryset = Board.objects.filter(combined_query).order_by('-created_time')
+            boards = Board.objects.filter(combined_query).order_by('-created_time')
         else:
-            queryset = Board.objects.all().order_by('-created_time')
+            boards = Board.objects.all().order_by('-created_time')
 
-        boards, last_pages = self.get_paginated_boards(queryset, 1, 5)
 
         likes_and_replies = self.get_likes_and_replies(boards)
 
@@ -492,90 +394,103 @@ class ExhibitionAPI(
 
         response_data = {
             'boards': serializer.data,
-            'last_pages': last_pages,
             'likes_and_replies': likes_and_replies,
         }
 
         return Response(response_data)
 
-class CurrentUserView(APIView):
-    # authentication_classes = [SessionAuthentication, BasicAuthentication]
-    # permission_classes = [IsAuthenticated]
+class LikeBoardView(APIView):
+    def post(self, request, board_no, format=None):
+        user = get_object_or_404(UsersAppUser, username=request.data.get('username'))
+        board = get_object_or_404(Board, board_no=board_no)
 
-    def get(self, request):
-        user = request.user
-        response_data = {
-            'username': user.username,
-            'id': user.id,
-        }
-        return Response(response_data)
+        try:
+            like = Liked.objects.get(board_no=board, id=user.id)
+            like.delete()
+            liked = False
+        except Liked.DoesNotExist:
+            new_like = Liked(board_no=board, id=user, likedate=timezone.now())
+            new_like.save()
+            liked = True
+
+        return Response({'liked': liked}, status=status.HTTP_201_CREATED)
+
+class AddReply(APIView):
+    def post(self, request, board_no):
+        try:
+            board = Board.objects.get(board_no=board_no)
+            user = get_object_or_404(UsersAppUser, username=request.data.get('username', ''))
+            reply_text = request.data.get('comment', '')
+            Reply.objects.create(board_no=board, id=user, replytext=reply_text, regdate=timezone.now())
+
+            return Response({'message' : '댓글이 추가되었습니다.'})
+        
+        except Board.DoesNotExist:
+            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        
+class UserLikesView(APIView):
+    def get(self, request, username, format=None):
+        user = get_object_or_404(UsersAppUser, username=username)
+        try:
+            user_likes = Liked.objects.filter(id=user)
+            liked_boards = [liked.board_no.board_no for liked in user_likes]
+            return Response({'liked_boards': liked_boards}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class BoardWritingView(APIView):
     def post(self, request, format=None):
         title = request.data.get('title', '')
         contents = request.data.get('contents', '')
         created_time = request.data.get('created_time', None)
+        tags = request.data.get('tags')
         photoid = request.data.get('photoid')
-        
+        username = request.data.get('username')
         photo_instance = PhotoTable.objects.get(photoid=int(photoid))
-        user_id = 1
-    
-        user = get_object_or_404(UsersAppUser, pk=user_id)
 
-        new_board = Board(title=title, contents=contents, created_time=created_time, id=user, photoid=photo_instance)
+        user = get_object_or_404(UsersAppUser, username=username)
+
+        new_board = Board(title=title, contents=contents, board_photo_tag=tags, created_time=created_time, id=user, photoid=photo_instance)
         new_board.save()
 
         serializer = BoardSerializer(new_board)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class PhotoListView(APIView):
-    def get(self, request, *args, **kwargs):
-        user_id = 1
-        user = get_object_or_404(UsersAppUser, pk=user_id)
+    def get(self, request, username, **kwargs):
+        print(username)
+        user = get_object_or_404(UsersAppUser, username=username)
+        print(user)
         photos = PhotoTable.objects.filter(id=user)
+        print(photos)
         serializer_photos = PhotoTableSerializer(photos, many=True).data
 
         return Response({'photos': serializer_photos}, status=status.HTTP_200_OK)
 
-class LikeBoard(APIView):
-    permission_classes = [IsAuthenticated]
+class BoardUpdate(APIView):
+    def get(self, request, board_no, format=None):
+        board = get_object_or_404(Board, board_no=board_no)
+        serializer = BoardSerializer(board)
+        return Response(serializer.data)
+    
+    def post(self, request, board_no, format=None):
+        title = request.data.get('title', '')
+        contents = request.data.get('contents', '')
+        created_time = request.data.get('created_time', None)
+        tags = request.data.get('tags')
+        photoid = request.data.get('photoid')
+        username = request.data.get('username')
+        photo_instance = PhotoTable.objects.get(photoid=int(photoid))
 
-    def post(self, request, board_no):
-        try:
-            board = Board.objects.get(board_no=board_no)
-            user = request.user
+        user = get_object_or_404(UsersAppUser, username=username)
 
-            if Liked.objects.filter(board_no=board.board_no, id=user.id).exists():
-                Liked.objects.filter(board_no=board.board_no, id=user.id).delete()
-                message = '좋아요 취소'
-            else:
-                Liked.objects.create(board_no=board.board_no, id=user.id)
-                message = '좋아요 추가'
+        new_board = Board(board_no=board_no, title=title, contents=contents, board_photo_tag=tags, created_time=created_time, id=user, photoid=photo_instance)
+        new_board.save()
 
-            return Response({'message': message})
-
-        except Board.DoesNotExist:
-            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
-class AddReply(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, board_no):
-        try:
-            board = Board.objects.get(board_no=board_no)
-            user = request.user
-            reply_text = request.data.get('replytext', '')
-
-            Reply.objects.create(board_no=board.board_no, id=user.id, replytext=reply_text)
-
-            return Response({'message' : '댓글이 추가되었습니다.'})
-        
-        except Board.DoesNotExist:
-            return Response({'error': '게시글을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
-
-class BoardAPIMixins(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
+        serializer = BoardSerializer(new_board)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class BoardDelete(
     mixins.DestroyModelMixin,
     generics.GenericAPIView,
 ):
@@ -583,11 +498,46 @@ class BoardAPIMixins(
     serializer_class = BoardSerializer
     lookup_field = "board_no"
 
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
     def delete(self, request, *args, **kwargs):
+        board = self.get_object()
+        board.liked_posts.all().delete()
+        board.replies.all().delete()
+
         return self.destroy(request, *args, **kwargs)
+
+import pandas as pd
+class RecommendContents(APIView):
+    def get(self, request, *args, **kwargs):
+        all_photos = PhotoTable.objects.all()
+        data_list = []
+
+        user_tags={}
+        for photo in all_photos:
+            username = photo.id.username
+            phototag = photo.phototag
+
+            if username not in user_tags:
+                user_tags[username] = set()
+            
+            user_tags[username].add(phototag)
+
+        for username, tags in user_tags.items():
+            for tag in tags:
+                data_list.append({
+                    'username' : username,
+                    'tag' : tag
+                })
+
+        df = pd.DataFrame(data_list)
+        recomment_content = self.recommend_content(df)
+
+        print(recomment_content)
+        response_data = {
+            'recomment_content':df,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def recommend_content(self, df):
+        recommended_content = df['tag'].value_counts().idxmax()
+        return {'recommended_content': recommended_content}
+
