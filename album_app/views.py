@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
-
+from typing import List, Dict
 from datetime import datetime
 
 from collections import Counter
@@ -572,14 +572,65 @@ class UserAnalysis(APIView):
         # JsonResponse를 사용하여 JSON 응답을 생성합니다.
         return JsonResponse(user_data)
     
-    def get_matching_activities(self, user_selected_tags):
-        predefinedActivities ={}
+    def get_matching_activities(request):
+        user_selected_tags = request.data.get('user_selected_tags', [])
+        predefined_activities = {
+            '운동': [
+                {'name': '자전거 타기', 'tags': ['자전거', '벤치', '공원']},
+                {'name': '야구', 'tags': ['야구배트', '야구글러브', '야구공']},
+                { 'name': '스키', 'tags': ['스키', '스노우보드', '겨울'] },
+                { 'name': '공놀이', 'tags': ['공', '야구배트', '야구장'] },
+                { 'name': '롤러블레이딩', 'tags': ['스케이트보드', '롤러블레이드', '공원'] },
+                { 'name': '수영', 'tags': ['물병', '수영복', '수영장'] },
+                { 'name': '요가', 'tags': ['요가 매트', '스트레칭', '명상'] },
+                { 'name': '필라테스', 'tags': ['필라테스 매트', '덤벨', '스트레칭'] },
+                { 'name': '헬스', 'tags': ['덤벨', '바벨', '운동복'] },
+            ],
+            '레저': [
+                { 'name': '피크닉', 'tags': ['바구니', '샌드위치', '공원'] },
+                { 'name': '등산', 'tags': ['등산화', '등산 배낭', '산'] },
+                { 'name': '낚시', 'tags': ['낚싯대', '낚시 미끼', '강'] },
+                { 'name': '캠핑', 'tags': ['텐트', '취사 도구', '캠핑장'] },
+                { 'name': '게임', 'tags': ['컴퓨터', '게임 패드', '게임'] },
+                { 'name': '영화 감상', 'tags': ['팝콘', '콜라', '영화관'] },
+                { 'name': '음악 감상', 'tags': ['헤드폰', '음악 스트리밍 서비스', '공연장'] },
+                { 'name': '독서', 'tags': ['책', '커피', '도서관'] },
+            ],
+            '기타': [
+                { 'name': '여행', 'tags': ['여권', '비행기표', '숙소'] },
+                { 'name': '학습', 'tags': ['책', '노트', '강의실'] },
+                { 'name': '취미', 'tags': ['악기', '도구', '동호회'] },
+                { 'name': '일', 'tags': ['컴퓨터', '휴대폰', '사무실'] },
+            ],
+            '추가 액티비티': [
+                { 'name': '자전거 여행', 'tags': ['자전거', '텐트', '캠핑장'] },
+                { 'name': '야구 경기 관람', 'tags': ['야구장', '야구팬', '응원'] },
+                { 'name': '스키 여행', 'tags': ['스키', '숙소', '스키장'] },
+                { 'name': '공놀이 대회', 'tags': ['공', '야구배트', '야구장'] },
+                { 'name': '롤러블레이딩 대회', 'tags': ['롤러블레이드', '공원'] },
+                { 'name': '수영 대회', 'tags': ['물병', '수영복', '수영장'] },
+                { 'name': '요가 수업', 'tags': ['요가 매트', '스트레칭', '명상'] },
+                { 'name': '필라테스 수업', 'tags': ['필라테스 매트', '덤벨', '스트레칭'] },
+                { 'name': '헬스장 이용', 'tags': ['덤벨', '바벨', '운동복'] },
+                { 'name': '피크닉 데이트', 'tags': ['바구니', '샌드위치', '공원'] },
+                { 'name': '등산 여행', 'tags': ['등산화', '등산 배낭', '산'] },
+                { 'name': '낚시 여행', 'tags': ['낚싯대', '낚시 미끼', '강'] },
+                { 'name': '캠핑 여행', 'tags': ['텐트', '취사 도구', '캠핑장'] },
+                { 'name': '게임 대회', 'tags': ['컴퓨터', '게임 패드', '게임'] },
+                { 'name': '영화 관람', 'tags': ['팝콘', '콜라', '영화관'] },
+                { 'name': '음악 감상', 'tags': ['헤드폰', '음악 스트리밍 서비스', '공연장'] },
+                { 'name': '독서', 'tags': ['책', '커피', '도서관'] },
+                { 'name': '여행 준비', 'tags': ['여권', '비행기표', '숙소'] },
+                { 'name': '학습 준비', 'tags': ['책', '노트', '강의실'] },
+                { 'name': '취미 활동', 'tags': ['악기', '도구', '동호회'] },
+                { 'name': '일상 생활', 'tags': ['컴퓨터', '휴대폰', '사무실'] },
+            ],
+        }
         matching_activities = []
-        
-        for activity_category, activities in predefinedActivities.items():
+
+        for activity_category, activities in predefined_activities.items():
             for activity in activities:
                 if all(tag in user_selected_tags for tag in activity['tags']):
-                    matching_activities.append(activity)
-                    break
+                    matching_activities.append({'name': activity['name']})
 
-        return matching_activities
+        return Response(matching_activities, status=status.HTTP_200_OK)

@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .views import *
+
 urlpatterns = [
     path('', views.index, name='index'),
     path('mypage_album/', views.mypage_album, name='mypage_album'),
@@ -32,7 +33,10 @@ urlpatterns = [
     path('board/<int:board_no>/', BoardUpdate.as_view()),  
     path('board_delete/<int:board_no>', BoardDelete.as_view()),
     path('recommend_contents/', RecommendContents.as_view()),
-    path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'), 
+
+    path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'),
+    path('get_matching_activities/', UserAnalysis.get_matching_activities, name='get_matching_activities'),
+
     path('chart_db/', tag_chart),
     path('chart_db_personal',tag_chart_personal)
 ]
