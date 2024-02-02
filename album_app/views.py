@@ -5,7 +5,7 @@ from .models import *
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
 import os
 from django.conf import settings
-from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
@@ -291,7 +291,7 @@ def personal_chart_yearly(request, **kwargs):
 # 전체 분석 차트 
 @api_view(['GET'])
 def tag_chart(request):
-    lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
           '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
             '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
           '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
@@ -305,23 +305,28 @@ def tag_chart(request):
             '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
             '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
             '사원', '상의', '손목시계']
-    tag_count=[]
-
-    for x in lis:
-        count= len(PhotoTable.objects.filter(phototag__contains=x))
-        tag_count.append(count)
-    # tag_count= sorted(tag_count, reverse=True)[:10]
-    result=[]
-    for y in range(len(lis)):
-        result.append({"tagname":lis[y], "tagcount":tag_count[y]})
+    data_dict = {}
+    data_list = []    
     
-    result_top10 = sorted(result, key=lambda x: x['tagcount'], reverse=True)
 
+    for i, name in enumerate(name_list):
+        count = len(PhotoTable.objects.filter(phototag__contains=name)) # 특정 id에 해당
+        data_dict['tagname'] = name_list[i]
+        data_dict['tagcount'] = count
+        # data_dict['login_id']= id      
+        data_list.append(data_dict)
+        data_dict = {}    
+
+    # tag가 하나 이상 존재하는 것만 뽑아서 내림차순으로 정렬함 
+    filtered_list = [item for item in data_list if item['tagcount'] != 0]
+    result_top10 = sorted(filtered_list, key=lambda x: x['tagcount'], reverse=True)
+    
     return Response(result_top10)
+
 
 # 전체 분석 차트 - 연도별 분석
 @api_view(['GET'])
-def tag_chart_yearly2(request):
+def tag_chart_yearly(request):
     lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
           '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
             '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
@@ -368,11 +373,10 @@ def tag_chart_yearly2(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+# 전체 분석 - 태그별 연도 당 갯수 
 @api_view(['GET'])
-def tag_chart_yearly(request, start_year=None, start_month=None, end_year=None, end_month=None):
-    try:
-        lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+def tag_count_yearly_chart(request):
+    lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
           '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
             '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
           '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
@@ -385,25 +389,52 @@ def tag_chart_yearly(request, start_year=None, start_month=None, end_year=None, 
             '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
             '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
             '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
-            '사원', '상의', '손목시계']
-        tag_count = []
+            '사원', '상의', '손목시계']   
+    data_list = []
 
-        for x in lis:
+    for name in lis:
+        tag_data = {'tagname': name, 'tagcount_by_year': []}
+        for year in range(2004, 2010):
             count = PhotoTable.objects.filter(
-                phototag__contains=x,
-                uploaddate__year__range=(start_year, end_year),
-                uploaddate__month__range=(start_month, end_month)
+                phototag__contains=name,
+                uploaddate__year=year
             ).count()
-            tag_count.append({"tagname": x, "tagcount": count})
+            tag_data['tagcount_by_year'].append({'year': year, 'tagcount': count})
 
-        result_top10 = sorted(tag_count, key=lambda x: x['tagcount'], reverse=True)[:10]
-        tagcount_sum = sum(tag["tagcount"] for tag in result_top10)
-        result_top10.append({"tagcount 합계:", tagcount_sum})
-        return Response(result_top10)
+        data_list.append(tag_data)
+        
+    return Response(data_list)
 
-    except Exception as e:
-        return Response({"error": str(e)}, status=500)
-    
+# 전체 분석- 행동분석 
+# 비행기 버스 기차 => 전국여행  => 연도별로 태그를 모두 갖고 있는 사람의 수 count 
+@api_view(['GET'])
+def custom_tags_count_yearly_chart(request):
+    lis = [{'애견가': ['강아지', '사람']}, {'전국여행': ['버스', '사람']},{'해외여행': ['비행기', '사람']},{'기차여행': ['기차', '사람']},{'육아': ['아이들', '사람']},{'캠핑': ['바베큐고기', '사람']}]
+    data_list = []
+
+    for year in range(2004, 2010):
+        year_data = {'year': year, 'user_tags': {}}
+
+        for category in lis:
+            category_name, tags = list(category.items())[0]
+            user_count = 0
+
+            # Count users who have all tags in the current category for the current year
+            users_with_tags = PhotoTable.objects.filter(uploaddate__year=year)
+
+            for tag in tags:
+                users_with_tags = users_with_tags.filter(phototag__contains=tag)
+
+            user_count = len(set(user.id for user in users_with_tags))
+
+            year_data['user_tags'][category_name] = user_count
+
+        data_list.append(year_data)
+
+    return Response(data_list)
+
+
+
 
 
 
