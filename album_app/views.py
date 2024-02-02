@@ -234,7 +234,7 @@ def personal_chart_yearly(request, **kwargs):
         # 2004년부터 2009년까지 연도별 태그별 이미지 카운트
         data = (
             PhotoTable.objects
-            .filter(id=user_id, uploaddate__year__range=(2004, 2009))
+            .filter(id=user_id, uploaddate__year__range=(2004, 2024))
             .values('phototag', 'uploaddate__year')
         )
 
@@ -326,7 +326,7 @@ def tag_chart_yearly(request):
         result=[]
         
 
-        for year in range(2004, 2010):
+        for year in range(2004, 2024):
             start_month = 1 
             end_month = 12  
 
@@ -374,7 +374,7 @@ def tag_count_yearly_chart(request):
 
     for name in lis:
         tag_data = {'tagname': name, 'tagcount_by_year': []}
-        for year in range(2004, 2010):
+        for year in range(2004, 2024):
             count = PhotoTable.objects.filter(
                 phototag__contains=name,
                 uploaddate__year=year
@@ -392,7 +392,7 @@ def custom_tags_count_yearly_chart(request):
     lis = [{'애견가': ['강아지', '사람']}, {'전국여행': ['버스', '사람']},{'해외여행': ['비행기', '사람']},{'기차여행': ['기차', '사람']},{'육아': ['아이들', '사람']},{'캠핑': ['바베큐고기', '사람']}]
     data_list = []
 
-    for year in range(2004, 2010):
+    for year in range(2004, 2024):
         year_data = {'year': year, 'user_tags': {}}
 
         for category in lis:
