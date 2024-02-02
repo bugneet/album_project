@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PhotoTable, Board, Reply, Liked, UsersAppUser
+from .models import *
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -77,3 +77,13 @@ class LikedSerializer(serializers.ModelSerializer):
             "likedate",          
         ]
         
+class RecommendContentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecommendContents
+        fields = [
+            "contents_id",
+            "phototag",
+            "contents_name",
+            "contents_link",
+            "contents_image",
+        ]
