@@ -43,7 +43,7 @@ urlpatterns = [
     path('board_delete/<int:board_no>/', BoardDelete.as_view()),
     path('recommend_tags/<str:username>/', RecommendTags.as_view()),
       
-    path('recommend_contents/', RecommendContents.as_view()),
+    path('recommend_contents/', RecommendContent.as_view()),
 
     path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'),
     path('get_matching_activities/', UserAnalysis.get_matching_activities, name='get_matching_activities'),
