@@ -13,12 +13,17 @@ urlpatterns = [
     path("mypost/<str:username>/", MyPost.as_view()),
     path("myreply/<str:username>/", MyReply.as_view()),
     path('classification/', Classification.as_view()),
-    path('save-data/', save_data, name='save-data'),
+    path('save-data/<str:username>', save_data, name='save-data'),    
+    path("albumupdate/<str:photoid>/", MyAlbumUpdate.as_view()),
+    path("album_update/<str:photoid>/", album_update),
+    
+    path("myalbumdel/<str:photoid>/", MyAlbumDel.as_view()),
     path("myreplydel/<str:rno>/", MyReplyDel.as_view()),
     path("myliked/<str:username>/", MyLiked.as_view()),
-    path("myreplydel/<str:likeno>/", MyLikedDel.as_view()),
+    path("mylikedel/<str:likeno>/", MyLikedDel.as_view()),
+
     path("mixin/liked/", LikedAPIMixins.as_view()),    
-    path('upload/', upload_photo, name='upload_photo'),
+    # path('upload/', upload_photo, name='upload_photo'),
     path( '', views.index, name='index'),
     # path('exhibition/', views.exhibition, name='exhibition'),
     path('exhibition/', ExhibitionAPI.as_view()),
@@ -34,6 +39,8 @@ urlpatterns = [
     path('recommend_contents/', RecommendContents.as_view()),
       
     path('chart_db/', tag_chart),
-    path('chart_db_personal',tag_chart_personal)
-]
+    path('chart_db_personal',tag_chart_personal),
+
+    path("upload/", file_upload),
+]    
 
