@@ -33,6 +33,9 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from .modules.yolo_detection import detect
 
+from uuid import uuid4
+from django.core.files.storage import FileSystemStorage
+
 
 # Create your views here.
 def index(request):
@@ -57,30 +60,42 @@ def mypage_myreply(request):
 
 class Classification(generics.ListAPIView):
     serializer_class = PhotoTableSerializer
-   
-    def get_queryset(self):
-        
-        file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
-        items = detect(file_names) # 이미지 파일명 전달 
+    
+    def get_queryset(self):        
+        fileNames = self.request.GET.getlist('fileNames[]')
+        items = detect(fileNames) # 이미지 파일명 전달 
         return items
     
     def get(self, request, *args, **kwargs):    
              
-        print(request.session.items())    
+        # print(request.session.items())    
         return self.list(request, *args, **kwargs)
     
 @api_view(['POST'])
-def save_data(request):   
-
+def save_data(request, username):
     if request.method == 'POST':
-        print(request.data)
-        serializer = PhotoTableSerializer(data=request.data, many=True)        
+        
+        # Serializer 객체 생성
+        serializer = PhotoTableSerializer()        
+       
+        user = UsersAppUser.objects.filter(username=username) 
 
-        if serializer.is_valid():
-            # 데이터 유효성 검사 후 저장
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data_list = []
+        
+        for data in request.data:
+            # 원하는 id 값을 data에 추가
+            data['id'] = user[0].id 
+            # Serializer에 데이터를 직접 전달하여 객체 생성
+            serializer = PhotoTableSerializer(data=data)
+
+            if serializer.is_valid():
+                # 데이터 유효성 검사 후 저장
+                serializer.save()
+                data_list.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data_list, status=status.HTTP_201_CREATED)
     
 class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
@@ -98,6 +113,51 @@ class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generi
     
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
+class MyAlbumDel(mixins.DestroyModelMixin, generics.GenericAPIView):
+    queryset = PhotoTable.objects.all()
+    serializer_class = PhotoTableSerializer
+    lookup_field = "photoid"  # 기본키
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+# 사진 1장 수정
+class MyAlbumUpdate(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = PhotoTable.objects.all()
+    serializer_class = PhotoTableSerializer
+    lookup_field = "photoid"  # 기본키
+
+    # GET : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 반환 (retrieve)
+    def get(self, request, *args, **kwargs):  # GET 메소드 처리 함수 (1권 조회)
+        return self.retrieve(request, *args, **kwargs)  # mixins.RetrieveModelMixin와 연결
+
+    # PUT : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 수정 (update)
+    def put(self, request, *args, **kwargs):  # PUT 메소드 처리 함수 (1권 수정)        
+        return self.update(request, *args, **kwargs)  # mixins.UpdateModelMixin와 연결
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+@api_view(['PUT'])
+def album_update(request, photoid):
+    try:
+        instance = PhotoTable.objects.get(photoid=photoid)
+    except PhotoTable.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = PhotoTableSerializer(instance, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
 
@@ -372,7 +432,8 @@ class MyPost(generics.ListAPIView):
     def get_queryset(self):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
-        return Board.objects.filter(id=user[0].id).select_related('photoid').all() 
+        return Board.objects.filter(id=user[0].id).select_related('photoid').order_by('-created_time').all() 
+
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -383,7 +444,7 @@ class MyReply(generics.ListAPIView):
     def get_queryset(self):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
-        return Reply.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
+        return Reply.objects.filter(id=user[0].id).select_related('board_no').order_by('-regdate').all()  # 완전일치 검색
    
     def get(self, request, *args, **kwargs):
         print(request.user)
@@ -399,6 +460,7 @@ class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
         return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
 
 
+    
 class MyLiked(generics.ListAPIView):
     serializer_class = LikedSerializer
    
@@ -407,7 +469,7 @@ class MyLiked(generics.ListAPIView):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
 
-        return Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색    
+        return Liked.objects.filter(id=user[0].id).select_related('board_no').order_by('-likedate').all()  # 완전일치 검색    
     
     def get(self, request, *args, **kwargs):    
              
@@ -715,8 +777,6 @@ class RecommendContents(APIView):
         recommended_content = df['tag'].value_counts().idxmax()
         return {'recommended_content': recommended_content}
 
-
-
 class UserAnalysis(APIView):
     @login_required
     def get(self, request, username, **kwargs):
@@ -756,3 +816,22 @@ class UserAnalysis(APIView):
                     break
 
         return matching_activities
+@api_view(['POST'])
+def file_upload(request):
+    if request.method == "POST" and request.FILES.getlist('imgFiles'):
+        files = request.FILES.getlist('imgFiles')
+        fs = FileSystemStorage()
+
+        saved_files = []
+
+        for file in files:
+            # 파일명 중복되지 않도록 uuid 사용해서 파일명 변경
+            uuid = uuid4().hex
+            file_name = uuid + '_' +  file.name  
+            fs.save(file_name, file)
+            saved_files.append(file_name)
+
+        return JsonResponse({'fileNames':saved_files})
+
+    return JsonResponse({'message': 'No files were uploaded.'}, status=400)
+
