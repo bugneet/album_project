@@ -20,6 +20,7 @@ from rest_framework.views import APIView, View
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.db.models import Count
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 
@@ -541,3 +542,44 @@ class RecommendContents(APIView):
         recommended_content = df['tag'].value_counts().idxmax()
         return {'recommended_content': recommended_content}
 
+
+
+class UserAnalysis(APIView):
+    @login_required
+    def get(self, request, username, **kwargs):
+        # 로그인한 사용자의 username을 가져옵니다.
+        username = request.user.username
+
+        # 해당 사용자가 올린 사진의 태그 수와 상위 3개 태그를 가져옵니다.
+        user = get_object_or_404(UsersAppUser, username=username)
+        user_photos = PhotoTable.objects.filter(id=user)
+        user_tags = user_photos.values('phototag').annotate(tag_count=Count('phototag')).order_by('-tag_count')[:3]
+
+        # 가져온 태그 데이터를 리스트로 변환
+        user_tags_list = list(user_tags.values('phototag', 'tag_count'))
+
+        # 해당 사용자의 전체 이미지 수를 가져옵니다.
+        total_images_count = PhotoTable.objects.filter(id=user).count()
+
+        # 사용자 분석 페이지에 필요한 정보를 JSON 형식으로 생성합니다.
+        user_data = {
+            'username': username,
+            'total_images_count': total_images_count,
+            'user_tags': user_tags_list,
+            # 추가적인 필요한 정보가 있다면 여기에 추가
+        }
+
+        # JsonResponse를 사용하여 JSON 응답을 생성합니다.
+        return JsonResponse(user_data)
+    
+    def get_matching_activities(self, user_selected_tags):
+        predefinedActivities ={}
+        matching_activities = []
+        
+        for activity_category, activities in predefinedActivities.items():
+            for activity in activities:
+                if all(tag in user_selected_tags for tag in activity['tags']):
+                    matching_activities.append(activity)
+                    break
+
+        return matching_activities
