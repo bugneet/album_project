@@ -32,7 +32,7 @@ urlpatterns = [
     path('board/<int:board_no>/', BoardUpdate.as_view()),  
     path('board_delete/<int:board_no>', BoardDelete.as_view()),
     path('recommend_contents/', RecommendContents.as_view()),
-      
+    path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'), 
     path('chart_db/', tag_chart),
     # path('personal_chart/<int:login_id>',personal_chart)
     path('personal_chart/<str:username>/',personal_chart),
