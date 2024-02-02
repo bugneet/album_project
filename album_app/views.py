@@ -2,7 +2,7 @@ import re
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
-from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
+from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer, RecommendContentsSerializer
 import os
 from django.conf import settings
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
@@ -12,10 +12,10 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 from PIL import Image
 from datetime import datetime
-# from ultralytics import YOLO
-# import torchvision.transforms as transforms
+from ultralytics import YOLO
+import torchvision.transforms as transforms
 from operator import itemgetter
-# import imagehash
+import imagehash
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -397,7 +397,7 @@ class ExhibitionAPI(
         for board in boards:
             likes_count = Liked.objects.filter(board_no=board.board_no).count()
             replies = Reply.objects.filter(board_no=board.board_no)
-            reply_list = [{'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
+            reply_list = [{'rno': reply.rno, 'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
             sorted_replies = sorted(reply_list, key=lambda x: x['regdate'], reverse=True)
             likes_and_replies.append({
                 'board_no' : board.board_no,
@@ -563,42 +563,92 @@ class BoardDelete(
 
         return self.destroy(request, *args, **kwargs)
 
+class ReplyDelete(
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = Reply.objects.all()
+    lookup_field = 'rno'
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
 import pandas as pd
-class RecommendContents(APIView):
-    def get(self, request, *args, **kwargs):
-        all_photos = PhotoTable.objects.all()
-        data_list = []
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-        user_tags={}
-        for photo in all_photos:
-            username = photo.id.username
-            phototag = photo.phototag
+class RecommendTags(APIView):
+    def get(self, request, username, **kwargs):
+        users = UsersAppUser.objects.all()
+        user_data_list = []
+        current_user = UsersAppUser.objects.filter(username=username).first()
 
-            if username not in user_tags:
-                user_tags[username] = set()
-            
-            user_tags[username].add(phototag)
+        for user in users:
+            user_data = {
+                "user_id": user.id,
+                "username": user.username,
+                "tags": set(),
+                "tag_count": {},
+            }
 
-        for username, tags in user_tags.items():
-            for tag in tags:
-                data_list.append({
-                    'username' : username,
-                    'tag' : tag
-                })
+            user_photos = PhotoTable.objects.filter(id=user.id)
+            for photo in user_photos:
+                tags = photo.phototag.split('#')[1:]
 
-        df = pd.DataFrame(data_list)
-        recomment_content = self.recommend_content(df)
+                for tag in tags:
+                    user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
 
-        print(recomment_content)
+                sorted_tag_counts = sorted(user_data['tag_count'].items(), key=lambda x: x[1], reverse=True)
+                top_5_tags = dict(sorted_tag_counts[:5])
+
+                user_data['tag_count'] = top_5_tags
+                user_data['tags'].update(top_5_tags.keys())
+
+            user_data_list.append(user_data)        
+            users_df = pd.DataFrame(user_data_list)
+
+            users_df['tags_literal'] = users_df['tags'].apply(lambda tags_list: ' '.join(tag for tag in tags_list))
+        
+        corpus = users_df['tags_literal'].astype(str).tolist()
+        vectorizer = CountVectorizer(min_df=0.0, ngram_range=(1,2))
+        tag_vector = vectorizer.fit_transform(corpus)
+
+        tag_matrix = pd.DataFrame(tag_vector.toarray(), columns=vectorizer.get_feature_names_out())
+        
+        tag_similarity = cosine_similarity(tag_matrix, tag_matrix)
+
+        tag_similarity_arg = tag_similarity.argsort()[:, ::-1]
+
+        similar_user = users_df.iloc[tag_similarity_arg[current_user.id-1][1:6]]
+        current_user = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
+
         response_data = {
-            'recomment_content':df,
+            'similar_user' : similar_user,
+            'current_user' : current_user,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
-    def recommend_content(self, df):
-        # 여기에 좀 더 복잡한 컨텐츠 추천 로직을 구현
-        # 예를 들어, 각 유저별로 가장 많이 등장하는 태그를 찾는 등의 방식으로 추천 가능
-        # 추천 결과를 반환
-        recommended_content = df['tag'].value_counts().idxmax()
-        return {'recommended_content': recommended_content}
+from functools import reduce
+class RecommendContent(APIView):
+    def get(self, request, *args, **kwargs):
+        user_tags = request.GET.get('user_tags').split(',')
+        recommend_tags = request.GET.get('recommend_tags').split(',')
 
+        user_tags = [tag.strip() for tag in user_tags]
+        
+        user_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
+        )
+
+        recommend_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in recommend_tags))
+        )
+
+        user_content_serializer = RecommendContentsSerializer(user_content, many=True)
+        recommend_content_serializer = RecommendContentsSerializer(recommend_content, many=True)
+
+        response_data = {
+            'user_content': user_content_serializer.data,
+            'recommend_content': recommend_content_serializer.data,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)

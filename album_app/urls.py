@@ -23,13 +23,15 @@ urlpatterns = [
     path('exhibition/like/<int:board_no>/', LikeBoardView().as_view()),
     path('exhibition/userlikes/<str:username>/', UserLikesView().as_view()),
     path('exhibition/add_comment/<int:board_no>/', AddReply().as_view()),
+    path('exhibition/delete_comment/<int:rno>/', ReplyDelete.as_view()),
 
     path('board_writing/', BoardWritingView.as_view()),
     path('photos/<str:username>/', PhotoListView.as_view()),
 
     path('board/<int:board_no>/', BoardUpdate.as_view()),  
-    path('board_delete/<int:board_no>', BoardDelete.as_view()),
-    path('recommend_contents/', RecommendContents.as_view()),
+    path('board_delete/<int:board_no>/', BoardDelete.as_view()),
+    path('recommend_tags/<str:username>/', RecommendTags.as_view()),
+    path('recommend_contents/', RecommendContent.as_view()),
       
     path('chart_db/', tag_chart),
     path('chart_db_personal',tag_chart_personal)
