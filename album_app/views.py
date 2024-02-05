@@ -2,8 +2,12 @@
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
+<<<<<<< HEAD
 from .models import RecommendContents
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer,RecommendContentsSerializer
+=======
+from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer, RecommendContentsSerializer
+>>>>>>> 54b7392c94d89a2cc0126dc09d52a4a0c8fc46c5
 import os
 from django.conf import settings
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
@@ -11,8 +15,9 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
-
+from typing import List, Dict
 from datetime import datetime
+
 
 from collections import Counter
 from rest_framework.response import Response 
@@ -773,7 +778,7 @@ class ExhibitionAPI(
         for board in boards:
             likes_count = Liked.objects.filter(board_no=board.board_no).count()
             replies = Reply.objects.filter(board_no=board.board_no)
-            reply_list = [{'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
+            reply_list = [{'rno': reply.rno, 'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
             sorted_replies = sorted(reply_list, key=lambda x: x['regdate'], reverse=True)
             likes_and_replies.append({
                 'board_no' : board.board_no,
@@ -939,7 +944,74 @@ class BoardDelete(
 
         return self.destroy(request, *args, **kwargs)
 
+class ReplyDelete(
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = Reply.objects.all()
+    lookup_field = 'rno'
 
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+class RecommendTags(APIView):
+    def get(self, request, username, **kwargs):
+        users = UsersAppUser.objects.all()
+        user_data_list = []
+        current_user = UsersAppUser.objects.filter(username=username).first()
+
+        for user in users:
+            user_data = {
+                "user_id": user.id,
+                "username": user.username,
+                "tags": set(),
+                "tag_count": {},
+            }
+
+            user_photos = PhotoTable.objects.filter(id=user.id)
+            for photo in user_photos:
+                tags = photo.phototag.split('#')[1:]
+
+                for tag in tags:
+                    user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
+
+                sorted_tag_counts = sorted(user_data['tag_count'].items(), key=lambda x: x[1], reverse=True)
+                top_5_tags = dict(sorted_tag_counts[:5])
+
+                user_data['tag_count'] = top_5_tags
+                user_data['tags'].update(top_5_tags.keys())
+
+            user_data_list.append(user_data)        
+            users_df = pd.DataFrame(user_data_list)
+
+            users_df['tags_literal'] = users_df['tags'].apply(lambda tags_list: ' '.join(tag for tag in tags_list))
+        
+        corpus = users_df['tags_literal'].astype(str).tolist()
+        vectorizer = CountVectorizer(min_df=0.0, ngram_range=(1,2))
+        tag_vector = vectorizer.fit_transform(corpus)
+
+        tag_matrix = pd.DataFrame(tag_vector.toarray(), columns=vectorizer.get_feature_names_out())
+        
+        tag_similarity = cosine_similarity(tag_matrix, tag_matrix)
+
+        tag_similarity_arg = tag_similarity.argsort()[:, ::-1]
+
+        similar_user = users_df.iloc[tag_similarity_arg[current_user.id-1][1:6]]
+        current_user = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
+
+        response_data = {
+            'similar_user' : similar_user,
+            'current_user' : current_user,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def recommend_content(self, df):
+        recommended_content = df['tag'].value_counts().idxmax()
+        return {'recommended_content': recommended_content}
 
 class UserAnalysis(APIView):
     @login_required
@@ -969,17 +1041,69 @@ class UserAnalysis(APIView):
         # JsonResponse를 사용하여 JSON 응답을 생성합니다.
         return JsonResponse(user_data)
     
-    def get_matching_activities(self, user_selected_tags):
-        predefinedActivities ={}
+    def get_matching_activities(request):
+        user_selected_tags = request.data.get('user_selected_tags', [])
+        predefined_activities = {
+            '운동': [
+                {'name': '자전거 타기', 'tags': ['자전거', '벤치', '공원']},
+                {'name': '야구', 'tags': ['야구배트', '야구글러브', '야구공']},
+                { 'name': '스키', 'tags': ['스키', '스노우보드', '겨울'] },
+                { 'name': '공놀이', 'tags': ['공', '야구배트', '야구장'] },
+                { 'name': '롤러블레이딩', 'tags': ['스케이트보드', '롤러블레이드', '공원'] },
+                { 'name': '수영', 'tags': ['물병', '수영복', '수영장'] },
+                { 'name': '요가', 'tags': ['요가 매트', '스트레칭', '명상'] },
+                { 'name': '필라테스', 'tags': ['필라테스 매트', '덤벨', '스트레칭'] },
+                { 'name': '헬스', 'tags': ['덤벨', '바벨', '운동복'] },
+            ],
+            '레저': [
+                { 'name': '피크닉', 'tags': ['바구니', '샌드위치', '공원'] },
+                { 'name': '등산', 'tags': ['등산화', '등산 배낭', '산'] },
+                { 'name': '낚시', 'tags': ['낚싯대', '낚시 미끼', '강'] },
+                { 'name': '캠핑', 'tags': ['텐트', '취사 도구', '캠핑장'] },
+                { 'name': '게임', 'tags': ['컴퓨터', '게임 패드', '게임'] },
+                { 'name': '영화 감상', 'tags': ['팝콘', '콜라', '영화관'] },
+                { 'name': '음악 감상', 'tags': ['헤드폰', '음악 스트리밍 서비스', '공연장'] },
+                { 'name': '독서', 'tags': ['책', '커피', '도서관'] },
+            ],
+            '기타': [
+                { 'name': '여행', 'tags': ['여권', '비행기표', '숙소'] },
+                { 'name': '학습', 'tags': ['책', '노트', '강의실'] },
+                { 'name': '취미', 'tags': ['악기', '도구', '동호회'] },
+                { 'name': '일', 'tags': ['컴퓨터', '휴대폰', '사무실'] },
+            ],
+            '추가 액티비티': [
+                { 'name': '자전거 여행', 'tags': ['자전거', '텐트', '캠핑장'] },
+                { 'name': '야구 경기 관람', 'tags': ['야구장', '야구팬', '응원'] },
+                { 'name': '스키 여행', 'tags': ['스키', '숙소', '스키장'] },
+                { 'name': '공놀이 대회', 'tags': ['공', '야구배트', '야구장'] },
+                { 'name': '롤러블레이딩 대회', 'tags': ['롤러블레이드', '공원'] },
+                { 'name': '수영 대회', 'tags': ['물병', '수영복', '수영장'] },
+                { 'name': '요가 수업', 'tags': ['요가 매트', '스트레칭', '명상'] },
+                { 'name': '필라테스 수업', 'tags': ['필라테스 매트', '덤벨', '스트레칭'] },
+                { 'name': '헬스장 이용', 'tags': ['덤벨', '바벨', '운동복'] },
+                { 'name': '피크닉 데이트', 'tags': ['바구니', '샌드위치', '공원'] },
+                { 'name': '등산 여행', 'tags': ['등산화', '등산 배낭', '산'] },
+                { 'name': '낚시 여행', 'tags': ['낚싯대', '낚시 미끼', '강'] },
+                { 'name': '캠핑 여행', 'tags': ['텐트', '취사 도구', '캠핑장'] },
+                { 'name': '게임 대회', 'tags': ['컴퓨터', '게임 패드', '게임'] },
+                { 'name': '영화 관람', 'tags': ['팝콘', '콜라', '영화관'] },
+                { 'name': '음악 감상', 'tags': ['헤드폰', '음악 스트리밍 서비스', '공연장'] },
+                { 'name': '독서', 'tags': ['책', '커피', '도서관'] },
+                { 'name': '여행 준비', 'tags': ['여권', '비행기표', '숙소'] },
+                { 'name': '학습 준비', 'tags': ['책', '노트', '강의실'] },
+                { 'name': '취미 활동', 'tags': ['악기', '도구', '동호회'] },
+                { 'name': '일상 생활', 'tags': ['컴퓨터', '휴대폰', '사무실'] },
+            ],
+        }
         matching_activities = []
-        
-        for activity_category, activities in predefinedActivities.items():
+
+        for activity_category, activities in predefined_activities.items():
             for activity in activities:
                 if all(tag in user_selected_tags for tag in activity['tags']):
-                    matching_activities.append(activity)
-                    break
+                    matching_activities.append({'name': activity['name']})
 
-        return matching_activities
+        return Response(matching_activities, status=status.HTTP_200_OK)
+
 @api_view(['POST'])
 def file_upload(request):
     if request.method == "POST" and request.FILES.getlist('imgFiles'):
@@ -999,3 +1123,28 @@ def file_upload(request):
 
     return JsonResponse({'message': 'No files were uploaded.'}, status=400)
 
+from functools import reduce
+class RecommendContent(APIView):
+    def get(self, request, *args, **kwargs):
+        user_tags = request.GET.get('user_tags').split(',')
+        recommend_tags = request.GET.get('recommend_tags').split(',')
+
+        user_tags = [tag.strip() for tag in user_tags]
+        
+        user_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
+        )
+
+        recommend_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in recommend_tags))
+        )
+
+        user_content_serializer = RecommendContentsSerializer(user_content, many=True)
+        recommend_content_serializer = RecommendContentsSerializer(recommend_content, many=True)
+
+        response_data = {
+            'user_content': user_content_serializer.data,
+            'recommend_content': recommend_content_serializer.data,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+       

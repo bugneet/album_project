@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from .views import *
+
 urlpatterns = [
     path('', views.index, name='index'),
     path('mypage_album/', views.mypage_album, name='mypage_album'),
@@ -30,13 +31,23 @@ urlpatterns = [
     path('exhibition/like/<int:board_no>/', LikeBoardView().as_view()),
     path('exhibition/userlikes/<str:username>/', UserLikesView().as_view()),
     path('exhibition/add_comment/<int:board_no>/', AddReply().as_view()),
+    path('exhibition/delete_comment/<int:rno>/', ReplyDelete.as_view()),
 
     path('board_writing/', BoardWritingView.as_view()),
     path('photos/<str:username>/', PhotoListView.as_view()),
 
     path('board/<int:board_no>/', BoardUpdate.as_view()),  
     path('board_delete/<int:board_no>', BoardDelete.as_view()),
+ 
     path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'), 
+    path('board_delete/<int:board_no>/', BoardDelete.as_view()),
+    path('recommend_tags/<str:username>/', RecommendTags.as_view()),
+      
+    path('recommend_contents/', RecommendContent.as_view()),
+
+    path('user_analysis/<str:username>/', UserAnalysis.as_view(), name='user_analysis'),
+    path('get_matching_activities/', UserAnalysis.get_matching_activities, name='get_matching_activities'),
+
     path('chart_db/', tag_chart),
     # path('personal_chart/<int:login_id>',personal_chart)
     path('personal_chart/<str:username>/',personal_chart),
