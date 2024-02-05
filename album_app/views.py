@@ -2,12 +2,7 @@
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
-<<<<<<< HEAD
-from .models import RecommendContents
-from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer,RecommendContentsSerializer
-=======
 from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer, RecommendContentsSerializer
->>>>>>> 54b7392c94d89a2cc0126dc09d52a4a0c8fc46c5
 import os
 from django.conf import settings
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
