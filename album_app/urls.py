@@ -52,9 +52,18 @@ urlpatterns = [
     # path('personal_chart/<int:login_id>',personal_chart)
     path('personal_chart/<str:username>/',personal_chart),
     path('personal_chart_yearly/<str:username>/',personal_chart_yearly),
+    path('personal_chart_yearly_top3/<str:username>/',personal_chart_yearly_top3),
+    path('combined_api_view/<str:username>/', combined_api_view),
+
     path('tag_chart_yearly/', tag_chart_yearly),
     path('tag_count_yearly_chart/', tag_count_yearly_chart),
     path('custom_tags_count_yearly_chart/', custom_tags_count_yearly_chart),
+    path('tag_chart_yearly_top3/', tag_chart_yearly_top3),
+    path('recommend_contents3/', total_combined_api_view),
+
+    path('recommend_table/', Recommendtable.as_view()),
+
+
 
     path("upload/", file_upload),
 ]    

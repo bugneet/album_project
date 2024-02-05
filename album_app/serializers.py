@@ -30,6 +30,17 @@ class PhotoTableSerializer(serializers.ModelSerializer):
             "id",
         ]
 
+class RecommendContentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecommendContents
+        fields=[
+            "contents_id",
+            "phototag",
+            "contents_name",
+            "contents_link",
+            "contents_image"
+        ]
+
 class BoardSerializer(serializers.ModelSerializer):
     photoid = PhotoTableSerializer()
     id = UserSerializer()
