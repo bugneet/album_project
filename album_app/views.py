@@ -13,6 +13,8 @@ from django.contrib.auth import login as auth_login
 from typing import List, Dict
 from datetime import datetime
 
+# import torchvision.transforms as transforms
+from operator import itemgetter
 
 from collections import Counter
 from rest_framework.response import Response 
@@ -487,8 +489,6 @@ class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
         return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
 
 class LikedAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
-
-    # 2개 변수 필요
     queryset = Liked.objects.all()
     serializer_class = LikedSerializer
 
@@ -591,7 +591,6 @@ class ExhibitionAPI(
         all_phototags = (
             Board.objects
             .values_list('board_photo_tag', flat=True)
-            .distinct()
         )
 
         tag_counter = Counter(tag for phototag in all_phototags for tag in phototag.split('#') if tag)
@@ -804,6 +803,7 @@ class RecommendTags(APIView):
         response_data = {
             'similar_user' : similar_user,
             'current_user' : current_user,
+            'user_df': users_df,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
