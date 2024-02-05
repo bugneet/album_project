@@ -2,7 +2,8 @@
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
-from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
+from .models import RecommendContents
+from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer,RecommendContentsSerializer
 import os
 from django.conf import settings
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
@@ -161,6 +162,51 @@ def album_update(request, photoid):
     
 
 
+# 유저에 맞는 컨텐츠 출력
+@api_view(['GET'])
+def combined_api_view(request, **kwargs):
+    username = kwargs.get('username')
+
+    # 사용자 정보 가져오기
+    user = UsersAppUser.objects.filter(username=username).first()
+
+    if user:
+        # 해당 사용자의 ID 가져오기
+        user_id = user.id
+
+        # 연도별 태그별 이미지 카운트
+        data = (
+            PhotoTable.objects
+            .filter(id=user_id, uploaddate__year=2023)
+            .values('phototag')
+        )
+
+        # 2023년 태그 추출
+        tags_2023 = []
+        for entry in data:
+            tags = entry['phototag'].split('#')
+            for tag in tags:
+                tagname = tag.strip()
+                if tagname:
+                    tags_2023.append(tagname)
+        tag_counts = Counter(tags_2023)
+
+        top_tags_2023 = tag_counts.most_common(4)
+        
+        recommend_contents_data = []
+
+        for tag, _ in top_tags_2023:
+            tag_data = RecommendContents.objects.filter(phototag__contains=tag)
+            recommend_contents_data.extend(tag_data[:4])  # 상위 3개의 데이터만 추가
+        
+        # Serialize 데이터
+        serializer = RecommendContentsSerializer(recommend_contents_data, many=True)
+
+        return Response(serializer.data)
+    
+    return Response([])
+
+
 # 개인 분석차트 
 @api_view(['GET'])
 def personal_chart(request, **kwargs):
@@ -265,6 +311,66 @@ def personal_chart_yearly(request, **kwargs):
 
         return Response(result_list)
 
+# 연도별 개인분석 top3
+@api_view(['GET'])
+def personal_chart_yearly_top3(request, **kwargs):
+    username = kwargs.get('username')
+
+    # 사용자 정보 가져오기
+    user = UsersAppUser.objects.filter(username=username).first()
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+
+    if user:
+        # 해당 사용자의 ID 가져오기
+        user_id = user.id
+
+        # 연도별 태그별 이미지 카운트
+        data = (
+            PhotoTable.objects
+            .filter(id=user_id, uploaddate__year__range=(2018, 2024))
+            .values('uploaddate__year', 'phototag')
+        )
+
+        # 결과를 딕셔너리 형태로 구성
+        result_dict = {}
+        for entry in data:
+            year = entry['uploaddate__year']
+            tags = entry['phototag'].split('#')  # #으로 구분된 태그 파싱
+            for tag in tags:
+                tagname = tag.strip()  # 태그 양쪽의 공백 제거
+                if not tagname or tagname not in name_list:
+                    continue  # 빈 문자열이거나 지정된 태그가 아니면 스킵
+
+                if year not in result_dict:
+                    result_dict[year] = {}
+
+                if tagname not in result_dict[year]:
+                    result_dict[year][tagname] = 1
+                else:
+                    result_dict[year][tagname] += 1
+
+        # 연도별 Top 3 태그 구성
+        result_list = []
+        for year, tags in result_dict.items():
+            sorted_tags = sorted(tags.items(), key=lambda x: x[1], reverse=True)[:3]
+            tags_list = [{'tagname': tagname, 'tagcount': tagcount} for tagname, tagcount in sorted_tags]
+            result_list.append({'year': year, 'top_tags': tags_list})
+
+        return Response(result_list)
+
     
 
 
@@ -302,6 +408,52 @@ def tag_chart(request):
     result_top10 = sorted(filtered_list, key=lambda x: x['tagcount'], reverse=True)
     
     return Response(result_top10)
+
+# 최근 5개년 연도별 top3
+@api_view(['GET'])
+def tag_chart_yearly_top3(request):
+    lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' ,
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+
+    data_list = []
+
+    for year in range(2019, 2024):
+        top3_for_year = []
+        for i, name in enumerate(lis):
+            tag_count = (
+                PhotoTable.objects
+                .filter(phototag__contains=name, uploaddate__year=year)
+                .count()
+            )
+
+            data_dict = {
+                'tagname': name,
+                'tagcount': tag_count
+            }
+            top3_for_year.append(data_dict)
+
+        sorted_top3_for_year = sorted(top3_for_year, key=lambda x: x['tagcount'], reverse=True)[:3]
+        result_dict = {
+            'year': year,
+            'top3_tags': sorted_top3_for_year
+        }
+        data_list.append(result_dict)
+
+
+    return Response(data_list)
+
 
 
 # 전체 분석 차트 - 연도별 분석
@@ -385,11 +537,56 @@ def tag_count_yearly_chart(request):
         
     return Response(data_list)
 
+
+
+# 유저에 맞는 컨텐츠 출력
+@api_view(['GET'])
+def total_combined_api_view(request):
+
+        # 연도별 태그별 이미지 카운트
+        data = (
+            PhotoTable.objects
+            .filter(uploaddate__year=2023)
+            .values('phototag')
+        ) 
+
+        # 2023년 태그 추출
+        tags_2023 = []
+        for entry in data:
+            tags = entry['phototag'].split('#')
+            for tag in tags:
+                tagname = tag.strip()
+                if tagname:
+                    tags_2023.append(tagname)
+        tag_counts = Counter(tags_2023)
+
+        top_tags_2023 = tag_counts.most_common(5)
+        print(top_tags_2023)
+        recommend_contents_data = []
+
+        for tag, _ in top_tags_2023:
+            tag_data = RecommendContents.objects.filter(phototag__contains=tag)
+            recommend_contents_data.extend(tag_data[:5])  # 상위 3개의 데이터만 추가
+        
+        # Serialize 데이터
+        serializer = RecommendContentsSerializer(recommend_contents_data, many=True)
+
+        return Response(serializer.data)
+
 # 전체 분석- 행동분석 
 # 비행기 버스 기차 => 전국여행  => 연도별로 태그를 모두 갖고 있는 사람의 수 count 
 @api_view(['GET'])
 def custom_tags_count_yearly_chart(request):
-    lis = [{'애견가': ['강아지', '사람']}, {'전국여행': ['버스', '사람']},{'해외여행': ['비행기', '사람']},{'기차여행': ['기차', '사람']},{'육아': ['아이들', '사람']},{'캠핑': ['바베큐고기', '사람']}]
+    lis = [{'애견가': ['강아지', '사람']}, {'전국여행': ['버스', '사람']},{'해외여행': ['비행기', '사람']},
+           {'기차여행': ['기차', '사람']},{'육아': ['아이들', '사람']},{'캠핑': ['바베큐고기', '사람']},
+           {'sns사용자': ['휴대폰뒷면', '사람']},{'피트니스': ['러닝머신', '사람']},{'건강식': ['당근', '브로콜리']},
+          {'스포츠인': ['공', '사람']},
+           {'시네필': ['텔레비전', '사람']},{'애서가': ['책', '사람']},{'애주가': ['건배', '소주잔']},
+           {'테니스인': ['테니스라켓', '사람']},{'뷰티': ['화장품', '사람']},{'신발수집가': ['사람', '신발']},
+           {'포토그래퍼': ['카메라', '사람']},{'게임 및 엔터테인먼트': ['컴퓨터', '키보드']},{'기독교인': ['사람', '십자가']},
+           {'불교인': ['사람', '사원']}, {'시계수집가': ['사람', '손목시계']},{'와인수집가': ['사람', '와인잔']},{'애묘가': ['사람', '고양이']},
+        
+           ]
     data_list = []
 
     for year in range(2004, 2024):
@@ -413,9 +610,10 @@ def custom_tags_count_yearly_chart(request):
 
     return Response(data_list)
 
-
-
-
+    
+class Recommendtable(generics.ListAPIView):
+    queryset = RecommendContents.objects.all()
+    serializer_class = RecommendContentsSerializer
 
 
 
@@ -741,41 +939,7 @@ class BoardDelete(
 
         return self.destroy(request, *args, **kwargs)
 
-import pandas as pd
-class RecommendContents(APIView):
-    def get(self, request, *args, **kwargs):
-        all_photos = PhotoTable.objects.all()
-        data_list = []
 
-        user_tags={}
-        for photo in all_photos:
-            username = photo.id.username
-            phototag = photo.phototag
-
-            if username not in user_tags:
-                user_tags[username] = set()
-            
-            user_tags[username].add(phototag)
-
-        for username, tags in user_tags.items():
-            for tag in tags:
-                data_list.append({
-                    'username' : username,
-                    'tag' : tag
-                })
-
-        df = pd.DataFrame(data_list)
-        recomment_content = self.recommend_content(df)
-
-        print(recomment_content)
-        response_data = {
-            'recomment_content':df,
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
-
-    def recommend_content(self, df):
-        recommended_content = df['tag'].value_counts().idxmax()
-        return {'recommended_content': recommended_content}
 
 class UserAnalysis(APIView):
     @login_required
