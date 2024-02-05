@@ -12,10 +12,10 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 from PIL import Image
 from datetime import datetime
-from ultralytics import YOLO
-import torchvision.transforms as transforms
+# from ultralytics import YOLO
+# import torchvision.transforms as transforms
 from operator import itemgetter
-import imagehash
+# import imagehash
 from collections import Counter
 from rest_framework.response import Response 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -333,8 +333,6 @@ class MyLikedDel(mixins.DestroyModelMixin, generics.GenericAPIView):
         return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
 
 class LikedAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
-
-    # 2개 변수 필요
     queryset = Liked.objects.all()
     serializer_class = LikedSerializer
 
@@ -412,7 +410,6 @@ class ExhibitionAPI(
         all_phototags = (
             Board.objects
             .values_list('board_photo_tag', flat=True)
-            .distinct()
         )
 
         tag_counter = Counter(tag for phototag in all_phototags for tag in phototag.split('#') if tag)
@@ -625,6 +622,7 @@ class RecommendTags(APIView):
         response_data = {
             'similar_user' : similar_user,
             'current_user' : current_user,
+            'user_df': users_df,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
