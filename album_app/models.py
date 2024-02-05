@@ -102,7 +102,7 @@ class DjangoSession(models.Model):
 
 class Liked(models.Model):
     likeno = models.AutoField(primary_key=True)
-    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
+    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no', related_name='liked_posts')
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
     likedate = models.DateTimeField(blank=True, null=True)
 
@@ -125,21 +125,25 @@ class PhotoTable(models.Model):
         db_table = 'photo_table'
 
 
+
+
 class RecommendContents(models.Model):
     contents_id = models.AutoField(primary_key=True)
-    phototag = models.CharField(max_length=50, blank=True, null=True)       
+    phototag = models.CharField(max_length=50, blank=True, null=True)
     contents_name = models.CharField(max_length=100)
-    contents_link = models.CharField(max_length=100, blank=True, null=True) 
-    contents_image = models.TextField(blank=True, null=True)
+    contents_link = models.CharField(max_length=100, blank=True, null=True)
+    contents_image = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'recommend_contents'
 
 
+
+
 class Reply(models.Model):
     rno = models.AutoField(primary_key=True)
-    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no')
+    board_no = models.ForeignKey(Board, models.DO_NOTHING, db_column='board_no',  related_name='replies')
     replytext = models.CharField(max_length=1000)
     id = models.ForeignKey('UsersAppUser', models.DO_NOTHING, db_column='id')
     regdate = models.DateTimeField(blank=True, null=True)
