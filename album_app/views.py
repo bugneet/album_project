@@ -591,7 +591,10 @@ class RecommendTags(APIView):
             user_photos = PhotoTable.objects.filter(id=user.id)
             for photo in user_photos:
                 tags = photo.phototag.split('#')[1:]
-
+                
+                if '' in tags:
+                    tags = [tag for tag in tags if tag != '']
+                    
                 for tag in tags:
                     user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
 
@@ -617,11 +620,10 @@ class RecommendTags(APIView):
         tag_similarity_arg = tag_similarity.argsort()[:, ::-1]
 
         similar_user = users_df.iloc[tag_similarity_arg[current_user.id-1][1:6]]
-        current_user = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
-
+        current_user_info = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
         response_data = {
             'similar_user' : similar_user,
-            'current_user' : current_user,
+            'current_user' : current_user_info,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -633,6 +635,7 @@ class RecommendContent(APIView):
 
         user_tags = [tag.strip() for tag in user_tags]
         print('유저 태그: ', user_tags)
+        print('추천 태그', recommend_tags)
         user_content = RecommendContents.objects.filter(
             reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
         )
