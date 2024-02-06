@@ -562,13 +562,13 @@ def total_combined_api_view(request):
                     tags_2023.append(tagname)
         tag_counts = Counter(tags_2023)
 
-        top_tags_2023 = tag_counts.most_common(5)
+        top_tags_2023 = tag_counts.most_common(4)
         print(top_tags_2023)
         recommend_contents_data = []
 
         for tag, _ in top_tags_2023:
             tag_data = RecommendContents.objects.filter(phototag__contains=tag)
-            recommend_contents_data.extend(tag_data[:5])  # 상위 3개의 데이터만 추가
+            recommend_contents_data.extend(tag_data[:4])  # 상위 3개의 데이터만 추가
         
         # Serialize 데이터
         serializer = RecommendContentsSerializer(recommend_contents_data, many=True)
