@@ -2,7 +2,7 @@
 from django.shortcuts import render , redirect,  HttpResponseRedirect, get_object_or_404
 from rest_framework import status, mixins, generics
 from .models import *
-from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer
+from .serializers import PhotoTableSerializer, BoardSerializer, ReplySerializer, LikedSerializer, RecommendContentsSerializer
 import os
 from django.conf import settings
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
@@ -12,6 +12,7 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login as auth_login
 from typing import List, Dict
 from datetime import datetime
+
 
 from collections import Counter
 from rest_framework.response import Response 
@@ -23,6 +24,7 @@ from django.db.models import Q
 from django.db.models import Count
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -31,6 +33,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from .modules.yolo_detection import detect
+
+from uuid import uuid4
+from django.core.files.storage import FileSystemStorage
 
 
 # Create your views here.
@@ -56,30 +61,42 @@ def mypage_myreply(request):
 
 class Classification(generics.ListAPIView):
     serializer_class = PhotoTableSerializer
-   
-    def get_queryset(self):
-        
-        file_names = ['2004-01-01_17.jpg','2004-04-01_21.jpg','2004-06-01_6.jpg']
-        items = detect(file_names) # 이미지 파일명 전달 
+    
+    def get_queryset(self):        
+        fileNames = self.request.GET.getlist('fileNames[]')
+        items = detect(fileNames) # 이미지 파일명 전달 
         return items
     
     def get(self, request, *args, **kwargs):    
              
-        print(request.session.items())    
+        # print(request.session.items())    
         return self.list(request, *args, **kwargs)
     
 @api_view(['POST'])
-def save_data(request):   
-
+def save_data(request, username):
     if request.method == 'POST':
-        print(request.data)
-        serializer = PhotoTableSerializer(data=request.data, many=True)        
+        
+        # Serializer 객체 생성
+        serializer = PhotoTableSerializer()        
+       
+        user = UsersAppUser.objects.filter(username=username) 
 
-        if serializer.is_valid():
-            # 데이터 유효성 검사 후 저장
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data_list = []
+        
+        for data in request.data:
+            # 원하는 id 값을 data에 추가
+            data['id'] = user[0].id 
+            # Serializer에 데이터를 직접 전달하여 객체 생성
+            serializer = PhotoTableSerializer(data=data)
+
+            if serializer.is_valid():
+                # 데이터 유효성 검사 후 저장
+                serializer.save()
+                data_list.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data_list, status=status.HTTP_201_CREATED)
     
 class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
 
@@ -97,29 +114,200 @@ class PhotoTableAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generi
     
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
+class MyAlbumDel(mixins.DestroyModelMixin, generics.GenericAPIView):
+    queryset = PhotoTable.objects.all()
+    serializer_class = PhotoTableSerializer
+    lookup_field = "photoid"  # 기본키
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+# 사진 1장 수정
+class MyAlbumUpdate(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = PhotoTable.objects.all()
+    serializer_class = PhotoTableSerializer
+    lookup_field = "photoid"  # 기본키
+
+    # GET : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 반환 (retrieve)
+    def get(self, request, *args, **kwargs):  # GET 메소드 처리 함수 (1권 조회)
+        return self.retrieve(request, *args, **kwargs)  # mixins.RetrieveModelMixin와 연결
+
+    # PUT : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 수정 (update)
+    def put(self, request, *args, **kwargs):  # PUT 메소드 처리 함수 (1권 수정)        
+        return self.update(request, *args, **kwargs)  # mixins.UpdateModelMixin와 연결
+
+    # DELETE : bookno 전달 받고, bookno에 해당되는 1개의 도서 정보 삭제 (destroy)
+    def delete(self, request, *args, **kwargs):  # DELETE 메소드 처리 함수 (1권 삭제)
+        return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
+
+@api_view(['PUT'])
+def album_update(request, photoid):
+    try:
+        instance = PhotoTable.objects.get(photoid=photoid)
+    except PhotoTable.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = PhotoTableSerializer(instance, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
+
+# 개인 분석차트 
 @api_view(['GET'])
-def tagChart_test(request):
-    id= request.user.id # 로그인한 id 불러오기 
+def personal_chart(request, **kwargs):
+    # login_id= request.user.id # 로그인한 id 불러오기 
+    # print(login_id)
+    username= kwargs.get('username')
     
-    name_list = ['프로그래밍', '안드로이드']
+    result= UsersAppUser.objects.filter(username=username)
+    ls= result.values_list('id',flat=True)
+    id = ls[0] if ls else None
+    print(id)
+
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
     data_dict = {}
     data_list = []    
     
 
     for i, name in enumerate(name_list):
-        count = len(PhotoTable.objects.filter(phototag__contains=name, userid=id)) # 특정 id에 해당
+        count = len(PhotoTable.objects.filter(phototag__contains=name, id=id)) # 특정 id에 해당
         data_dict['tagname'] = name_list[i]
-        data_dict['tagcount'] = count        
+        data_dict['tagcount'] = count
+        # data_dict['login_id']= id      
         data_list.append(data_dict)
         data_dict = {}    
 
-    print(data_list)
-    return Response(data_list)
+    # tag가 하나 이상 존재하는 것만 뽑아서 내림차순으로 정렬함 
+    filtered_list = [item for item in data_list if item['tagcount'] != 0]
+    result_top10 = sorted(filtered_list, key=lambda x: x['tagcount'], reverse=True)
+    
+    return Response(result_top10)
+
+# 개인분석 -연도별
+@api_view(['GET'])
+def personal_chart_yearly(request, **kwargs):
+    username = kwargs.get('username')
+
+    # 사용자 정보 가져오기
+    user = UsersAppUser.objects.filter(username=username).first()
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+
+    if user:
+        # 해당 사용자의 ID 가져오기
+        user_id = user.id
+
+        # 2004년부터 2009년까지 연도별 태그별 이미지 카운트
+        data = (
+            PhotoTable.objects
+            .filter(id=user_id, uploaddate__year__range=(2004, 2024))
+            .values('phototag', 'uploaddate__year')
+        )
+
+        # 결과를 딕셔너리 형태로 구성
+        result_dict = {}
+        for entry in data:
+            year = entry['uploaddate__year']
+            tags = entry['phototag'].split('#')  # #으로 구분된 태그 파싱
+            for tag in tags:
+                tagname = tag.strip()  # 태그 양쪽의 공백 제거
+                if not tagname:
+                    continue  # 빈 문자열이면 스킵
+
+                if tagname in name_list:
+                    if year not in result_dict:
+                        result_dict[year] = {}
+
+                    if tagname not in result_dict[year]:
+                        result_dict[year][tagname] = 1
+                    else:
+                        result_dict[year][tagname] += 1
+
+        # 연도별 리스트로 구성
+        result_list = []
+        for year, tags in result_dict.items():
+            tags_list = [{'tagname': tagname, 'tagcount': tagcount} for tagname, tagcount in tags.items()]
+            result_list.append({'year': year, 'tags': tags_list})
+
+        return Response(result_list)
+
+    
 
 
+# 전체 분석 차트 
 @api_view(['GET'])
 def tag_chart(request):
+    name_list =[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' 
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']
+    data_dict = {}
+    data_list = []    
+    
+
+    for i, name in enumerate(name_list):
+        count = len(PhotoTable.objects.filter(phototag__contains=name)) # 특정 id에 해당
+        data_dict['tagname'] = name_list[i]
+        data_dict['tagcount'] = count
+        # data_dict['login_id']= id      
+        data_list.append(data_dict)
+        data_dict = {}    
+
+    # tag가 하나 이상 존재하는 것만 뽑아서 내림차순으로 정렬함 
+    filtered_list = [item for item in data_list if item['tagcount'] != 0]
+    result_top10 = sorted(filtered_list, key=lambda x: x['tagcount'], reverse=True)
+    
+    return Response(result_top10)
+
+
+# 전체 분석 차트 - 연도별 분석
+@api_view(['GET'])
+def tag_chart_yearly(request):
     lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
           '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
             '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
@@ -128,62 +316,108 @@ def tag_chart(request):
             '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
             '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
             '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
-            '장신구', '에어프라이어', '비행기날개', '아기', '백팩', '풍선', '바벨', 
-            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', '덤벨', 
-            '귀걸이', '에펠탑', '운동기구', '안경', '말', '아이', '등대', '바베큐고기', 
-            '포장고기', '목걸이', '바지', '휴대폰뒷면', '턱걸이', '리프트(케이블카)', 
-            '반지', '러닝머신', '신발', '쇼핑백', '소주잔', '선글라스', '일출(일몰)', 
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' ,
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
             '사원', '상의', '손목시계']
-    tag_count=[]
-
-    for x in lis:
-        count= len(PhotoTable.objects.filter(phototag__contains=x))
-        tag_count.append(count)
-    # tag_count= sorted(tag_count, reverse=True)[:10]
-    result=[]
-    for y in range(len(lis)):
-        result.append({"tagname":lis[y], "tagcount":tag_count[y]})
     
-    result_top10 = sorted(result, key=lambda x: x['tagcount'], reverse=True)[:10]
+    try:
+        result=[]
+        
 
-    return Response(result_top10)
+        for year in range(2004, 2024):
+            start_month = 1 
+            end_month = 12  
+
+            for month in range(start_month, end_month + 1):
+                    monthly_data = PhotoTable.objects.filter(uploaddate__year=year, uploaddate__month=month)
+
+                    tag_counter = Counter(tag for data in monthly_data for tag in data.phototag.split('#') if tag in lis)
+
+                    monthly_result = [{'tagname': tag, 'tagcount': tag_counter[tag]} for tag in lis]
+
+                    final_result=[tag for tag in monthly_result if tag['tagcount'] != 0]
+
+                    result_sorted= sorted(final_result, key=lambda x: x['tagcount'], reverse=True)
 
 
+                    result.append({'year': year, 'month': month, 'tags': result_sorted})
+                    
+
+        return Response(result, status=status.HTTP_200_OK)
+
+    except PhotoTable.DoesNotExist:
+        return Response({'error': 'No data found for the specified month range'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# 전체 분석 - 태그별 연도 당 갯수 
 @api_view(['GET'])
-def tag_chart_personal(request):
+def tag_count_yearly_chart(request):
+    lis=[ '자전거', '자동차', '오토바이', '비행기', '버스', '기차', '트럭', '보트',
+          '벤치', '새', '고양이', '강아지', '양', '소', '코끼리', '곰', '얼룩말', '기린',
+            '가방', '우산', '핸드백', '넥타이', '캐리어', '스키', '스노우보드', '공', '야구배트',
+          '야구글러브', '스케이트보드', '테니스라켓', '물병', '와인잔', '컵', '포크', 
+          '나이프', '숟가락', '접시', '바나나', '사과', '샌드위치', '오렌지', '브로콜리',
+            '당근', '핫도그', '피자', '도넛', '케이크', '소파', '화분', '침대', '식탁', 
+            '텔레비전', '컴퓨터', '마우스', '키보드', '전화기', '전자레인지', '오븐', 
+            '토스터기', '싱크대', '냉장고', '책', '꽃병', '곰인형',
+            '장신구', '에어프라이어', '비행기날개', '백팩', '풍선','아이들' ,
+            '맥주잔', '카메라', '양초', '건배', '전시된옷', '화장품', '십자가', 
+            '에펠탑', '안경', '등대', '바베큐고기', '원판(덤벨 및 바벨)',
+            '포장고기','바지', '휴대폰뒷면', '턱걸이', '케이블카', 
+            '러닝머신', '신발','소주잔', '선글라스', '일출(일몰)', 
+            '사원', '상의', '손목시계']   
+    data_list = []
 
-    if request.user.is_authenticated:
+    for name in lis:
+        tag_data = {'tagname': name, 'tagcount_by_year': []}
+        for year in range(2004, 2024):
+            count = PhotoTable.objects.filter(
+                phototag__contains=name,
+                uploaddate__year=year
+            ).count()
+            tag_data['tagcount_by_year'].append({'year': year, 'tagcount': count})
 
-        id= request.user.id # 로그인한 id 불러오기 
+        data_list.append(tag_data)
+        
+    return Response(data_list)
 
-    # p_count = len(PhotoTable.objects.filter(phototag__contains='프로그래밍', bookno='1003'))
-        p_count = len(PhotoTable.objects.filter(phototag__contains='사람' ,userid=id))
-        print(p_count)
+# 전체 분석- 행동분석 
+# 비행기 버스 기차 => 전국여행  => 연도별로 태그를 모두 갖고 있는 사람의 수 count 
+@api_view(['GET'])
+def custom_tags_count_yearly_chart(request):
+    lis = [{'애견가': ['강아지', '사람']}, {'전국여행': ['버스', '사람']},{'해외여행': ['비행기', '사람']},{'기차여행': ['기차', '사람']},{'육아': ['아이들', '사람']},{'캠핑': ['바베큐고기', '사람']}]
+    data_list = []
 
-        a_count = len(PhotoTable.objects.filter(phototag__contains='일상' ,userid=id))
-        print(a_count)       
+    for year in range(2004, 2024):
+        year_data = {'year': year, 'user_tags': {}}
 
-        b_count = len(PhotoTable.objects.filter(phototag__contains='아기' ,userid=id))
-        print(b_count) 
+        for category in lis:
+            category_name, tags = list(category.items())[0]
+            user_count = 0
 
-        c_count = len(PhotoTable.objects.filter(phototag__contains='운동기구', userid=id))
-        print(c_count) 
-        d_count = len(PhotoTable.objects.filter(phototag__contains='비행기' , userid=id))
-        print(d_count) 
+            # Count users who have all tags in the current category for the current year
+            users_with_tags = PhotoTable.objects.filter(uploaddate__year=year)
 
-        result = [
-            {"tagname":'사람', "tagcount":p_count},
-            {"tagname":'일상', "tagcount":a_count},
-            {"tagname":'운동기구', "tagcount":b_count},
-            {"tagname":'아기', "tagcount":c_count},
-            {"tagname":'비행기', "tagcount":d_count},
+            for tag in tags:
+                users_with_tags = users_with_tags.filter(phototag__contains=tag)
 
-            ]  
+            user_count = len(set(user.id for user in users_with_tags))
 
-        return Response(result)
-    else:
-        messages.warning(request, '로그인이 필요합니다.')
-        return HttpResponseRedirect('http://127.0.0.1:8000/chart_db/')
+            year_data['user_tags'][category_name] = user_count
+
+        data_list.append(year_data)
+
+    return Response(data_list)
+
+
+
+
+
 
 
 class BoardAPIMixins(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
@@ -199,7 +433,8 @@ class MyPost(generics.ListAPIView):
     def get_queryset(self):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
-        return Board.objects.filter(id=user[0].id).select_related('photoid').all() 
+        return Board.objects.filter(id=user[0].id).select_related('photoid').order_by('-created_time').all() 
+
    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -210,7 +445,7 @@ class MyReply(generics.ListAPIView):
     def get_queryset(self):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
-        return Reply.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색
+        return Reply.objects.filter(id=user[0].id).select_related('board_no').order_by('-regdate').all()  # 완전일치 검색
    
     def get(self, request, *args, **kwargs):
         print(request.user)
@@ -226,6 +461,7 @@ class MyReplyDel(mixins.DestroyModelMixin, generics.GenericAPIView):
         return self.destroy(request, *args, **kwargs)  # mixins.DestroyModelMixin와 연결
 
 
+    
 class MyLiked(generics.ListAPIView):
     serializer_class = LikedSerializer
    
@@ -234,7 +470,7 @@ class MyLiked(generics.ListAPIView):
         username = self.kwargs.get('username')
         user = UsersAppUser.objects.filter(username=username) 
 
-        return Liked.objects.filter(id=user[0].id).select_related('board_no').all()  # 완전일치 검색    
+        return Liked.objects.filter(id=user[0].id).select_related('board_no').order_by('-likedate').all()  # 완전일치 검색    
     
     def get(self, request, *args, **kwargs):    
              
@@ -340,7 +576,7 @@ class ExhibitionAPI(
         for board in boards:
             likes_count = Liked.objects.filter(board_no=board.board_no).count()
             replies = Reply.objects.filter(board_no=board.board_no)
-            reply_list = [{'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
+            reply_list = [{'rno': reply.rno, 'id': reply.id.username, 'replytext': reply.replytext, 'regdate': reply.regdate} for reply in replies]
             sorted_replies = sorted(reply_list, key=lambda x: x['regdate'], reverse=True)
             likes_and_replies.append({
                 'board_no' : board.board_no,
@@ -506,43 +742,74 @@ class BoardDelete(
 
         return self.destroy(request, *args, **kwargs)
 
+class ReplyDelete(
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+):
+    queryset = Reply.objects.all()
+    lookup_field = 'rno'
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
 import pandas as pd
-class RecommendContents(APIView):
-    def get(self, request, *args, **kwargs):
-        all_photos = PhotoTable.objects.all()
-        data_list = []
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-        user_tags={}
-        for photo in all_photos:
-            username = photo.id.username
-            phototag = photo.phototag
+class RecommendTags(APIView):
+    def get(self, request, username, **kwargs):
+        users = UsersAppUser.objects.all()
+        user_data_list = []
+        current_user = UsersAppUser.objects.filter(username=username).first()
 
-            if username not in user_tags:
-                user_tags[username] = set()
-            
-            user_tags[username].add(phototag)
+        for user in users:
+            user_data = {
+                "user_id": user.id,
+                "username": user.username,
+                "tags": set(),
+                "tag_count": {},
+            }
 
-        for username, tags in user_tags.items():
-            for tag in tags:
-                data_list.append({
-                    'username' : username,
-                    'tag' : tag
-                })
+            user_photos = PhotoTable.objects.filter(id=user.id)
+            for photo in user_photos:
+                tags = photo.phototag.split('#')[1:]
 
-        df = pd.DataFrame(data_list)
-        recomment_content = self.recommend_content(df)
+                for tag in tags:
+                    user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
 
-        print(recomment_content)
+                sorted_tag_counts = sorted(user_data['tag_count'].items(), key=lambda x: x[1], reverse=True)
+                top_5_tags = dict(sorted_tag_counts[:5])
+
+                user_data['tag_count'] = top_5_tags
+                user_data['tags'].update(top_5_tags.keys())
+
+            user_data_list.append(user_data)        
+            users_df = pd.DataFrame(user_data_list)
+
+            users_df['tags_literal'] = users_df['tags'].apply(lambda tags_list: ' '.join(tag for tag in tags_list))
+        
+        corpus = users_df['tags_literal'].astype(str).tolist()
+        vectorizer = CountVectorizer(min_df=0.0, ngram_range=(1,2))
+        tag_vector = vectorizer.fit_transform(corpus)
+
+        tag_matrix = pd.DataFrame(tag_vector.toarray(), columns=vectorizer.get_feature_names_out())
+        
+        tag_similarity = cosine_similarity(tag_matrix, tag_matrix)
+
+        tag_similarity_arg = tag_similarity.argsort()[:, ::-1]
+
+        similar_user = users_df.iloc[tag_similarity_arg[current_user.id-1][1:6]]
+        current_user = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
+
         response_data = {
-            'recomment_content':df,
+            'similar_user' : similar_user,
+            'current_user' : current_user,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
     def recommend_content(self, df):
         recommended_content = df['tag'].value_counts().idxmax()
         return {'recommended_content': recommended_content}
-
-
 
 class UserAnalysis(APIView):
     @login_required
@@ -634,3 +901,48 @@ class UserAnalysis(APIView):
                     matching_activities.append({'name': activity['name']})
 
         return Response(matching_activities, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def file_upload(request):
+    if request.method == "POST" and request.FILES.getlist('imgFiles'):
+        files = request.FILES.getlist('imgFiles')
+        fs = FileSystemStorage()
+
+        saved_files = []
+
+        for file in files:
+            # 파일명 중복되지 않도록 uuid 사용해서 파일명 변경
+            uuid = uuid4().hex
+            file_name = uuid + '_' +  file.name  
+            fs.save(file_name, file)
+            saved_files.append(file_name)
+
+        return JsonResponse({'fileNames':saved_files})
+
+    return JsonResponse({'message': 'No files were uploaded.'}, status=400)
+
+from functools import reduce
+class RecommendContent(APIView):
+    def get(self, request, *args, **kwargs):
+        user_tags = request.GET.get('user_tags').split(',')
+        recommend_tags = request.GET.get('recommend_tags').split(',')
+
+        user_tags = [tag.strip() for tag in user_tags]
+        
+        user_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
+        )
+
+        recommend_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in recommend_tags))
+        )
+
+        user_content_serializer = RecommendContentsSerializer(user_content, many=True)
+        recommend_content_serializer = RecommendContentsSerializer(recommend_content, many=True)
+
+        response_data = {
+            'user_content': user_content_serializer.data,
+            'recommend_content': recommend_content_serializer.data,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+       
