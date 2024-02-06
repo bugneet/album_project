@@ -970,11 +970,9 @@ class RecommendTags(APIView):
             for photo in user_photos:
                 tags = photo.phototag.split('#')[1:]
                 
-                if not tags or tags == ['']:
-                    continue
-                
-                print(tags)
-
+                if '' in tags:
+                    tags = [tag for tag in tags if tag != '']
+                    
                 for tag in tags:
                     user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
 
@@ -1000,11 +998,10 @@ class RecommendTags(APIView):
         tag_similarity_arg = tag_similarity.argsort()[:, ::-1]
 
         similar_user = users_df.iloc[tag_similarity_arg[current_user.id-1][1:6]]
-        current_user = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
-
+        current_user_info = users_df.iloc[tag_similarity_arg[current_user.id-1][0]]
         response_data = {
             'similar_user' : similar_user,
-            'current_user' : current_user,
+            'current_user' : current_user_info,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 class UserAnalysis(APIView):
@@ -1119,29 +1116,6 @@ def file_upload(request):
 
 from functools import reduce
 class RecommendContent(APIView):
-    def get(self, request, *args, **kwargs):
-        user_tags = request.GET.get('user_tags').split(',')
-        recommend_tags = request.GET.get('recommend_tags').split(',')
-
-        user_tags = [tag.strip() for tag in user_tags]
-        print('유저 태그: ', user_tags)
-        print('추천 태그', recommend_tags)
-        user_content = RecommendContents.objects.filter(
-            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
-        )
-
-        recommend_content = RecommendContents.objects.filter(
-            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in recommend_tags))
-        )
-
-        user_content_serializer = RecommendContentsSerializer(user_content, many=True)
-        recommend_content_serializer = RecommendContentsSerializer(recommend_content, many=True)
-
-        response_data = {
-            'user_content': user_content_serializer.data,
-            'recommend_content': recommend_content_serializer.data,
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
     def get(self, request, *args, **kwargs):
         user_tags = request.GET.get('user_tags').split(',')
         recommend_tags = request.GET.get('recommend_tags').split(',')
