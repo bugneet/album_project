@@ -622,7 +622,6 @@ class RecommendTags(APIView):
         response_data = {
             'similar_user' : similar_user,
             'current_user' : current_user,
-            'user_df': users_df,
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -633,7 +632,7 @@ class RecommendContent(APIView):
         recommend_tags = request.GET.get('recommend_tags').split(',')
 
         user_tags = [tag.strip() for tag in user_tags]
-        
+        print('유저 태그: ', user_tags)
         user_content = RecommendContents.objects.filter(
             reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
         )
