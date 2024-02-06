@@ -131,8 +131,8 @@ class RecommendContents(models.Model):
     contents_id = models.AutoField(primary_key=True)
     phototag = models.CharField(max_length=50, blank=True, null=True)
     contents_name = models.CharField(max_length=100)
-    contents_link = models.CharField(max_length=100, blank=True, null=True)
-    contents_image = models.CharField(max_length=200, blank=True, null=True)
+    contents_link = models.CharField(max_length=1000, blank=True, null=True)
+    contents_image = models.CharField(max_length=1000, blank=True, null=True)
 
     class Meta:
         managed = False

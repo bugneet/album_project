@@ -969,6 +969,11 @@ class RecommendTags(APIView):
             user_photos = PhotoTable.objects.filter(id=user.id)
             for photo in user_photos:
                 tags = photo.phototag.split('#')[1:]
+                
+                if not tags or tags == ['']:
+                    continue
+                
+                print(tags)
 
                 for tag in tags:
                     user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
@@ -1000,14 +1005,8 @@ class RecommendTags(APIView):
         response_data = {
             'similar_user' : similar_user,
             'current_user' : current_user,
-            'user_df': users_df,
         }
         return Response(response_data, status=status.HTTP_200_OK)
-
-    def recommend_content(self, df):
-        recommended_content = df['tag'].value_counts().idxmax()
-        return {'recommended_content': recommended_content}
-
 class UserAnalysis(APIView):
     @login_required
     def get(self, request, username, **kwargs):
@@ -1125,7 +1124,8 @@ class RecommendContent(APIView):
         recommend_tags = request.GET.get('recommend_tags').split(',')
 
         user_tags = [tag.strip() for tag in user_tags]
-        
+        print('유저 태그: ', user_tags)
+        print('추천 태그', recommend_tags)
         user_content = RecommendContents.objects.filter(
             reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
         )
@@ -1142,4 +1142,26 @@ class RecommendContent(APIView):
             'recommend_content': recommend_content_serializer.data,
         }
         return Response(response_data, status=status.HTTP_200_OK)
-       
+    def get(self, request, *args, **kwargs):
+        user_tags = request.GET.get('user_tags').split(',')
+        recommend_tags = request.GET.get('recommend_tags').split(',')
+
+        user_tags = [tag.strip() for tag in user_tags]
+        print('유저 태그: ', user_tags)
+        print('추천 태그', recommend_tags)
+        user_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in user_tags))
+        )
+
+        recommend_content = RecommendContents.objects.filter(
+            reduce(lambda x, y: x | y, (Q(phototag__icontains=tag) for tag in recommend_tags))
+        )
+
+        user_content_serializer = RecommendContentsSerializer(user_content, many=True)
+        recommend_content_serializer = RecommendContentsSerializer(recommend_content, many=True)
+
+        response_data = {
+            'user_content': user_content_serializer.data,
+            'recommend_content': recommend_content_serializer.data,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
