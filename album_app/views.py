@@ -38,7 +38,7 @@ from .modules.yolo_detection import detect
 
 from uuid import uuid4
 from django.core.files.storage import FileSystemStorage
-
+from django.db.models.functions import ExtractYear
 
 # Create your views here.
 def index(request):
@@ -280,16 +280,21 @@ def personal_chart_yearly(request, **kwargs):
         user_id = user.id
 
         # 2004년부터 2009년까지 연도별 태그별 이미지 카운트
+        start_date = datetime(2004, 1, 1)
+        end_date = datetime(2024, 12, 31)
+
+        # 필터링된 데이터를 가져옵니다.
         data = (
             PhotoTable.objects
-            .filter(id=user_id, uploaddate__year__range=(2004, 2024))
-            .values('phototag', 'uploaddate__year')
+            .filter(id=user_id, uploaddate__range=(start_date, end_date))
+            .values('phototag', 'uploaddate')
         )
+
 
         # 결과를 딕셔너리 형태로 구성
         result_dict = {}
         for entry in data:
-            year = entry['uploaddate__year']
+            year = entry['uploaddate'].year
             tags = entry['phototag'].split('#')  # #으로 구분된 태그 파싱
             for tag in tags:
                 tagname = tag.strip()  # 태그 양쪽의 공백 제거
@@ -963,24 +968,19 @@ class RecommendTags(APIView):
                 "user_id": user.id,
                 "username": user.username,
                 "tags": set(),
-                "tag_count": {},
+                "tag_count": Counter(),
             }
 
             user_photos = PhotoTable.objects.filter(id=user.id)
+            
             for photo in user_photos:
-                tags = photo.phototag.split('#')[1:]
-                
-                if '' in tags:
-                    tags = [tag for tag in tags if tag != '']
-                    
-                for tag in tags:
-                    user_data['tag_count'][tag] = user_data['tag_count'].get(tag, 0) + 1
+                tags = Counter(tag for tag in photo.phototag.split('#') if tag)
 
-                sorted_tag_counts = sorted(user_data['tag_count'].items(), key=lambda x: x[1], reverse=True)
-                top_5_tags = dict(sorted_tag_counts[:5])
+                user_data['tag_count'].update(tags)
 
-                user_data['tag_count'] = top_5_tags
-                user_data['tags'].update(top_5_tags.keys())
+            top_5_tags = dict(user_data['tag_count'].most_common(5))
+            user_data['tag_count'] = top_5_tags
+            user_data['tags'].update(top_5_tags.keys())
 
             user_data_list.append(user_data)        
             users_df = pd.DataFrame(user_data_list)
